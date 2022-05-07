@@ -108,6 +108,213 @@ double incbeta(double x, double a, double b) {
     return 1.0/0.0; /*Needed more loops, did not converge.*/
 }
 
+//-------------- SST of GLM regression --------------------------------
+double SST_GLM_bstr(double *y, double *tx1, double *x, double *z, double *resid1, double *weight, double* thetahat,
+		int n, int p11, int p2, int p3, int K, int M, double *G, double* theta){
+	int i,j,k,s,t, *subg, maxk=0, count=0, sumsb = 0;
+	double tmp, tmp1, tmp2, Tn=0.0, Tn0=0.0, Tn_star, pvals;
+	double *score1, *psi, *psin;
+	double *C11, *psi_h, *K1, *Vh, *Tns;
+
+	subg	= (int*)malloc(sizeof(int)*n);
+	psin	= (double*)malloc(sizeof(double)*p2);
+	psi  	= (double*)malloc(sizeof(double)*n*p2);
+	psi_h  	= (double*)malloc(sizeof(double)*n*p2);
+	score1 	= (double*)malloc(sizeof(double)*n*p11);
+	C11 	= (double*)malloc(sizeof(double)*p11*p11);
+	K1		= (double*)malloc(sizeof(double)*p2*p11);
+	Vh		= (double*)malloc(sizeof(double)*p2*p2);
+	Tns		= (double*)malloc(sizeof(double)*M);
+
+
+	for(j=0; j < p11; j++){
+		for(k=0; k < p11; k++){
+			tmp = 0.0;
+			for(i=0; i<n; i++){
+				tmp += tx1[j*n+i]*weight[i]*tx1[k*n+i];
+			}
+			C11[j*p11+k] = tmp/n;
+		}
+	}
+	MatrixInvSymmetric(C11,p11);
+
+	for(i=0; i<n; i++){
+		for(j=0; j<p11; j++){
+			tmp = 0.0;
+			for (s = 0; s < p11; s++){
+				tmp += C11[j*p11+s]*tx1[s*n+i];
+			}
+			score1[j*n+i] = tmp*resid1[i];
+		}
+
+		for(j=0; j<p2; j++){
+			psi[j*n+i] 	= x[j*n+i]*resid1[i];
+		}
+	}
+	for(j=0; j< M; j++){
+		Tns[j]	= 0.0;
+	}
+
+	for(k=0; k<K; k++){
+		sumsb 	= 0;
+		if(p3==1){
+			for(i=0; i<n; i++){
+				subg[i] = IDEX(theta[k], z[i]);
+				sumsb += subg[i];
+			}
+		}
+		else{
+			for(i=0; i<n; i++){
+				tmp = 0.0;
+				for (j = 0; j < p3; j++){
+					tmp += z[j*n+i]*theta[k*p3 + j];
+				}
+				subg[i] = IDEX(0.0, tmp);
+				sumsb += subg[i];
+			}
+		}
+
+		if (sumsb>0){
+			for (s = 0; s < p2*p11; s++){
+				K1[s] = 0.0;
+			}
+			for(i=0; i<n; i++){
+				if(subg[i]){
+					for (s = 0; s < p2; s++){
+						for (t = 0; t < p11; t++){
+							K1[s*p11+t] += x[s*n+i]*tx1[t*n+i]*weight[i];
+						}
+					}
+				}
+			}
+			for (s = 0; s < p2*p11; s++){
+				K1[s] /= n;
+			}
+
+			for (s = 0; s < p2; s++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp2 = (subg[i])?psi[s*n+i]:0.0;
+					tmp += tmp2;
+					tmp1 = 0.0;
+					for (t = 0; t < p11; t++){
+						tmp1 += K1[s*p11+t]*score1[t*n+i];
+					}
+					psi_h[s*n+i] = tmp2 - tmp1;
+
+				}
+				psin[s] = tmp;
+			}
+
+			for (s = 0; s < p2; s++){
+				for (t = s; t < p2; t++){
+					tmp = 0.0;
+					for(i=0; i<n; i++){
+						tmp += psi_h[s*n+i]*psi_h[t*n+i];
+					}
+					Vh[s*p2+t] = tmp/n;
+				}
+			}
+			for (s = 1; s < p2; s++){
+				for (t = 0; t < s; t++){
+					Vh[s*p2+t] = Vh[t*p2+s];
+				}
+			}
+
+			if(p2 ==1){
+				Vh[0] = 1.0/Vh[0];
+			}
+			else{
+				MatrixInvSymmetric(Vh, p2);
+			}
+
+			Tn = 0.0;
+			for (s = 0; s < p2; s++){
+				for (t = 0; t < p2; t++){
+					Tn += psin[s]*Vh[s*p2+t]*psin[t];
+				}
+			}
+
+			if(Tn>Tn0){
+				Tn0 = Tn;
+				maxk = k;
+			}
+			for(j=0; j< M; j++){
+				for (s = 0; s < p2; s++){
+					tmp = 0.0;
+					for(i=0; i<n; i++){
+						tmp += psi_h[s*n+i]*G[j*n+i];
+					}
+					psin[s] = tmp;
+				}
+
+				Tn_star = 0.0;
+				for (s = 0; s < p2; s++){
+					for (t = 0; t < p2; t++){
+						Tn_star += psin[s]*Vh[s*p2+t]*psin[t];
+					}
+				}
+				if(Tn_star>Tns[j]){
+					Tns[j] = Tn_star;
+				}
+			}
+		}
+	}
+
+	for(j=0; j< M; j++){
+		if(Tn0<=Tns[j]){
+			count++;
+		}
+	}
+	pvals = 1.0*count/M;
+	for(j=0; j<p3; j++){
+		thetahat[j] = theta[maxk*p3 + j];
+	}
+
+	free(subg);
+	free(psi);
+	free(score1);
+	free(C11);
+	free(Vh);
+	free(psi_h);
+	free(psin);
+	free(K1);
+	free(Tns);
+	return pvals;
+}
+
+SEXP _SST_GLM_bstr(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP RESID, SEXP WEIGHT, SEXP THETA, SEXP G, SEXP DIMs){
+	int n, p1, p2, p3, K, M;
+	n 		= INTEGER(DIMs)[0];
+	p1		= INTEGER(DIMs)[1];
+	p2 		= INTEGER(DIMs)[2];
+	p3 		= INTEGER(DIMs)[3];
+	K 		= INTEGER(DIMs)[4];
+	M 		= INTEGER(DIMs)[5];
+
+	SEXP rpvals, rthetahat, list, list_names;
+  	PROTECT(rpvals 		= allocVector(REALSXP, 	1));
+	PROTECT(rthetahat	= allocVector(REALSXP, 	p3));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+
+
+	REAL(rpvals)[0] = SST_GLM_bstr(REAL(Y), REAL(tX),
+						REAL(X), REAL(Z), REAL(RESID), REAL(WEIGHT), REAL(rthetahat),
+						n, p1, p2, p3, K, M, REAL(G), REAL(THETA));
+
+
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("pvals"));
+	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
+	SET_VECTOR_ELT(list, 		0, 	rpvals);
+	SET_VECTOR_ELT(list, 		1, 	rthetahat);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
 //-------------- SLR of GLM regression --------------------------------
 int CholeskyDecomL(double *L, int n, double *a){
 	// L is lowertriangle matrix satisfying a = L*L'
@@ -183,151 +390,6 @@ int CholeskyDecomU(double *U, int n, double *a){
 	return(1);
 }
 
-double GLM_SLR_bstr(double *Tns, double *tx, double *x, double *z, double *resids, double *weight, int *indx,
-		double *I0, int n, int p, int p2, int p3, int K, int M, double *G){
-	int i,j,k,s,t,p11=p+p2,*subg,sumsb=0;
-	double tmp, tmp1, *psi1, *psi0, *C11, *psin, Tn0=0.0;
-
-	subg	= (int*)malloc(sizeof(int)*n);
-	psi0 	= (double*)malloc(sizeof(double)*n*p11);
-	psi1 	= (double*)malloc(sizeof(double)*n*p11);
-	psin 	= (double*)malloc(sizeof(double)*p11);
-	C11 	= (double*)malloc(sizeof(double)*p11*p11);
-
-	for(j=0; j<p; j++){
-		for(i=0; i<n; i++){
-			psi1[j*n+i]	= tx[j*n+i]*weight[i];
-			psi0[j*n+i]	= tx[j*n+i]*resids[i];
-		}
-	}
-
-	for(j=0; j< M; j++){
-		Tns[j]	= 0.0;
-	}
-	for(k=0; k<K; k++){
-		sumsb 	= 0;
-		for(i=0; i<n; i++){
-			subg[i] = indx[k*n+i];
-			sumsb += subg[i];
-		}
-
-		if (sumsb>0){
-			for(i=0; i<n; i++){
-				if(subg[i]){
-					for(j=0; j<p2; j++){
-						psi1[(j+p)*n+i]	= x[j*n+i]*weight[i];
-						psi0[(j+p)*n+i]	= x[j*n+i]*resids[i];
-					}
-				}
-				else{
-					for(j=0; j<p2; j++){
-						psi1[(j+p)*n+i]	= 0.0;
-						psi0[(j+p)*n+i]	= 0.0;
-					}
-				}
-			}
-			for (s = 0; s < p11; s++){
-				for (t = s; t < p11; t++){
-					tmp = 0.0;
-					for(i=0; i<n; i++){
-						tmp += psi1[s*n+i]*psi1[t*n+i];
-					}
-					C11[s*p11+t] = tmp;
-				}
-			}
-			for (s = 1; s < p11; s++){
-				for (t = 0; t < s; t++){
-					C11[s*p11+t] = C11[t*p11+s];
-				}
-			}
-			MatrixInvSymmetric(C11,p11);
-
-			for (s = 0; s < p; s++){
-				for (t = 0; t < p; t++){
-					C11[s*p11+t] -= I0[s*p+t];
-				}
-			}
-
-			for (s = 0; s < p11; s++){
-				tmp = 0.0;
-				for(i=0; i<n; i++){
-					tmp += psi0[s*n+i];
-				}
-				psin[s] = tmp;
-			}
-			tmp1 = 0.0;
-			for (s = 0; s < p11; s++){
-				for (t = 0; t < p11; t++){
-					tmp1 += psin[s]*C11[s*p11+t]*psin[t];
-				}
-			}
-
-			if(tmp1 > Tn0){
-				Tn0 = tmp1;
-			}
-
-
-			for(j=0; j< M; j++){
-				for (s = 0; s < p11; s++){
-					tmp = 0.0;
-					for(i=0; i<n; i++){
-						tmp += psi1[s*n+i]*G[j*n+i];
-					}
-					psin[s] = tmp;
-				}
-				tmp1 = 0.0;
-				for (s = 0; s < p11; s++){
-					for (t = 0; t < p11; t++){
-						tmp1 += psin[s]*C11[s*p11+t]*psin[t];
-					}
-				}
-
-				if(tmp1 > Tns[j]){
-					Tns[j] = tmp1;
-				}
-			}
-
-		}
-	}
-
-
-	free(subg);
-	free(psi0);
-	free(psi1);
-	free(psin);
-	free(C11);
-	return Tn0;
-}
-
-SEXP _GLM_SLR(SEXP tX, SEXP X, SEXP Z, SEXP RESIDS, SEXP WEIGHT, SEXP INDX, SEXP I0, SEXP G, SEXP DIMs){
-	int n, p1, p2, p3, K, M;
-	n 		= INTEGER(DIMs)[0];
-	p1		= INTEGER(DIMs)[1];
-	p2 		= INTEGER(DIMs)[2];
-	p3 		= INTEGER(DIMs)[3];
-	K 		= INTEGER(DIMs)[4];
-	M 		= INTEGER(DIMs)[5];
-
-	SEXP rTn0, rTns, list, list_names;
-	PROTECT(rTn0 		= allocVector(REALSXP, 	1));
-  	PROTECT(rTns 		= allocVector(REALSXP, 	M));
-	PROTECT(list 		= allocVector(VECSXP, 	2));
-	PROTECT(list_names 	= allocVector(STRSXP, 	2));
-
-	REAL(rTn0)[0] = GLM_SLR_bstr(REAL(rTns), REAL(tX), REAL(X), REAL(Z), REAL(RESIDS), REAL(WEIGHT),
-							INTEGER(INDX), REAL(I0), n, p1, p2, p3, K, M, REAL(G));
-
-	SET_STRING_ELT(list_names, 	0,	mkChar("Tn0"));
-	SET_STRING_ELT(list_names, 	1,	mkChar("Tnstar"));
-	SET_VECTOR_ELT(list, 		0, 	rTn0);
-	SET_VECTOR_ELT(list, 		1, 	rTns);
-	setAttrib(list, R_NamesSymbol, 	list_names);
-
-	UNPROTECT(4);
-	return list;
-}
-
-//-------------- SLR_C of GLM regression --------------------------------
 double EstLinearSLR0(double *beta, const double *x, const double *y, double *residual, double *hess, int n, int p){
 	int i,j,k;
 	double tmp, *xy, loglokl=0.0;
