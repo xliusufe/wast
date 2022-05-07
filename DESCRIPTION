@@ -1,0 +1,15 @@
+Package: wast
+Type: Package
+Title: Subgroup testing in generalized linear models
+Version: 1.0.1
+Author: Xu Liu [aut,cre]
+Maintainer: Xu Liu <liu.xu@sufe.edu.cn>
+Description: Provide a method to calculate p-value of the test statistic for subgroup detecting in generalized linear models. In the paper Liu (2022), we consider hypothesis test of coefficients in the generalized linear models (GLM) to detect the existence of the subgroups, which can serve as the optimal individualized treatment recommendation in practice. Test we consider in this paper is one of the class of test problems when a part of parameters is not identifiable under the null. We propose a novel U-like statistic by taking the weighted average over the grouping parameter's space. The proposed test statistic not only improves significantly the power but also is computationally efficient.
+License: GPL (>= 2)
+Depends: R (>= 3.2.0)
+LazyData: true
+NeedsCompilation: yes
+Repository: github
+URL: https://github.com/xliusufe/wast
+Encoding: UTF-8
+Packaged: 2022-05-5 07:41:52 UTC; Xu Liu
