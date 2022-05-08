@@ -7,7 +7,7 @@
   Examples for Family 'Gaussian', 'binomial', and 'Poisson'.
 }
 
-\usage{exams(family = "gaussian", method = "wast", K = 1000, M = 1000)
+\usage{exams(family = "gaussian", method = "wast", M = 1000, K = 1000)
 }
 
 \arguments{
@@ -15,9 +15,9 @@
   
   \item{method}{There are there methods, including the proposed 'wast', 'sst', andd 'slrt'.}
   
-  \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
-  
   \item{M}{An integer, the number of bootstrap samples.}
+
+  \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
 }
 
 \value{

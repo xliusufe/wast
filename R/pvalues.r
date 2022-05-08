@@ -186,7 +186,7 @@ EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 
 	return(pvals)
 }
 
-pval <- function(data, family = "gaussian", method = "wast", K = 2000, M=1000){	
+pval <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000){	
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}

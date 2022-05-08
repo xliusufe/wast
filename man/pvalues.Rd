@@ -8,7 +8,7 @@
 }
 
 \usage{
-  pval(data, family = "gaussian", method = 'wast', K = 2000, M=1000)
+  pval(data, family = "gaussian", method = 'wast', M=1000, K = 2000)
 }
 
 \arguments{
@@ -18,9 +18,9 @@
   
   \item{method}{There are there methods, including the proposed 'wast', 'sst', andd 'slrt'.}
 
-  \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
-  
   \item{M}{An integer, the number of bootstrap samples.}
+
+  \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
 }
 
 \value{

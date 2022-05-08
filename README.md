@@ -29,11 +29,17 @@ R package "wast" for calculating p-value of the test statistic for subgroup dete
 Andrews, D. W. K. and Ploberger, W. (1994). Optimal tests when a nuisance parameter is
 present only under the alternative. Econometrica, 62(6):1383-1414.
 
+Davies, R. B. (1977). Hypothesis testing when a nuisance parameter is present only under the
+alternative. Biometrika, 64(2):247-254.
+
+Davies, R. B. (1987). Hypothesis testing when a nuisance parameter is present only under the
+alternative. Biometrika, 74(1):33-43.
+
 Fan, A., Rui, S., and Lu, W. (2017). Change-plane analysis for subgroup detection and sample
 size calculation. Journal of the American Statistical Association, 112(518):769-778.
 
 Huang, Y., Cho, J., and Fong, Y. (2021). Threshold-based subgroup testing in logistic regression
-models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 291-311.
+models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 70(2):291-311.
 
 Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
 
