@@ -13,25 +13,24 @@ data(simulatedData_gaussian)
 }
 \details{
 We simulated data generated from generalized linear models
- 
-  \eqn{
-    $$
-    \\
-  f(\boldsymbol{V}_i; \boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma})=\exp\left\{ \frac{y_i\mu_i - c(\mu_i)}{a(\phi)}\right\}h(y_i),\\
-    $$
-    $$
+  \deqn{
+  f(\boldsymbol{V}_i; \boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma})=\exp\left\{ \frac{y_i\mu_i - c(\mu_i)}{a(\phi)}\right\}h(y_i),
+  }
+  where
+  \deqn{
   \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
-    \\
-    $$
   }
 
-Y: the response, an \eqn{n}-vector
+\itemize{
+\item Y: the response, an \eqn{n}-vector
 
-X: the baseline variable with dimension \eqn{n\times p} 
+\item X: the baseline variable with dimension \eqn{n\times p} 
 
-Z: the grouping difference variable with dimension \eqn{n\times q} 
+\item Z: the grouping difference variable with dimension \eqn{n\times q} 
 
-U: the grouping variable with dimension \eqn{n\times r} 
+\item U: the grouping variable with dimension \eqn{n\times r} 
+}
+
 }
 
 \references{
