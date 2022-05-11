@@ -13,7 +13,7 @@
 \arguments{
   \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
   
-  \item{method}{There are there methods, including the proposed 'wast', 'sst', andd 'slrt'.}
+  \item{method}{There are there methods, including the proposed 'wast', 'sst', and 'slrt'.}
   
   \item{M}{An integer, the number of bootstrap samples.}
 

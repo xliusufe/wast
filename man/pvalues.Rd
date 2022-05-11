@@ -4,7 +4,7 @@
   P-value for Subgroup Test in Generalized Linear Models
 }
 \description{
-  Provide p-value for Subgroup Test in Generalized Linear Models, including three methods 'wast', 'sst', andd 'slrt'.
+  Provide p-value for subgroup test in generalized linear models, including three methods 'wast', 'sst', and 'slrt'.
 }
 
 \usage{
@@ -16,7 +16,7 @@
 
   \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
   
-  \item{method}{There are there methods, including the proposed 'wast', 'sst', andd 'slrt'.}
+  \item{method}{There are there methods, including the proposed 'wast', 'sst', and 'slrt'.}
 
   \item{M}{An integer, the number of bootstrap samples.}
 
