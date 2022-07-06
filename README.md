@@ -1,5 +1,5 @@
 # wast
-R package "wast" for calculating p-value of the test statistic for subgroup detecting in generalized linear models. In the paper Liu (2022), we consider hypothesis test of coefficients in the generalized linear models (GLM) to detect the existence of the subgroups, which can serve as the optimal individualized treatment recommendation in practice. Test we consider in this paper is one of the class of test problems when a part of parameters is not identifiable under the null. We propose a novel U-like statistic by taking the weighted average over the grouping parameter's space. The proposed test statistic not only improves significantly the power but also is computationally efficient.
+R package "wast" for calculating p-value of the test statistic for subgroup detecting in generalized linear models, as well as estimating the coefficients. In the paper Liu (2022), we consider hypothesis test of coefficients in the generalized linear models (GLM) to detect the existence of the subgroups, which can serve as the optimal individualized treatment recommendation in practice. Test we consider in this paper is one of the class of test problems when a part of parameters is not identifiable under the null. We propose a novel U-like statistic by taking the weighted average over the grouping parameter's space. The proposed test statistic not only improves significantly the power but also is computationally efficient.
 
 # Installation
 
@@ -13,6 +13,8 @@ R package "wast" for calculating p-value of the test statistic for subgroup dete
 # Example
     library(wast)
 
+    ## Testing
+
     data(simulatedData_gaussian)
     pvals <- pval(data = data_gaussian, family = "gaussian")
     pvals
@@ -24,6 +26,23 @@ R package "wast" for calculating p-value of the test statistic for subgroup dete
     data(simulatedData_poisson)
     pvals <- pval(data = data_poisson, family = "poisson")
     pvals
+
+
+
+    ## Estimation
+ 
+    data(simulatedData_gaussian)
+    fit <- estglm(data = data_gaussian, family = "gaussian")
+    fit$alpha
+
+    data(simulatedData_binomial)
+    fit <- estglm(data = data_binomial, family = "binomial")
+    fit$beta
+
+    data(simulatedData_poisson)
+    fit <- estglm(data = data_poisson, family = "poisson")
+    fit$alpha
+    fit$beta
 
 # References
 Andrews, D. W. K. and Ploberger, W. (1994). Optimal tests when a nuisance parameter is
