@@ -1,16 +1,11 @@
-gam.init.sub = function(q,n.initials){
-	out = matrix(rnorm(n.initials*q), nrow = n.initials)
-	dd 	= apply(out^2,1,sum)
-	out	= out/sqrt(dd)
-	return(out)
-}
-
 gam.init = function(n.initials,q,Z,lb.quantile,ub.quantile,ss=1){
 	if(q==1){
 		gamma.initials = matrix(1,n.initials,q+1)
 		gamma.initials[,1] = -quantile(Z,seq(lb.quantile,ub.quantile,length=n.initials))
 	}else{
-		gamma.initials = gam.init.sub(q,n.initials/ss)
+		n.initials = n.initials/ss
+		out = matrix(rnorm(n.initials*q), nrow = n.initials)
+		gamma.initials	= out/sqrt(apply(out^2,1,sum))
 		Z.gamma.initials = Z %*% t(gamma.initials)
 		ll=round(n.initials/ss)
 		qtile = sample(seq(lb.quantile,ub.quantile,length=n.initials),n.initials)
