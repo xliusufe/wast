@@ -42,6 +42,11 @@ EstTn_sst <- function(data, family = "gaussian", K = 2000L, M=2000L) {
 	}
 	G   	= matrix(rnorm(M*n), nrow = n, ncol = M)
 
+	scal_x 	= 1/sqrt(colSums(x^2))
+	x 		= x*matrix(rep(scal_x,each=n), nrow=n, ncol=p2)
+	scal_tx	= 1/sqrt(colSums(tx^2))
+	tx		= tx*matrix(rep(scal_tx,each=n), nrow=n, ncol=p1)
+
 	fitglm 	= glm(y~tx-1, family = family)
 	resuds 	= residuals(fitglm, type = "response")
 	weights = fitglm$weights
@@ -71,6 +76,11 @@ EstTn_slr <- function(data, family = "gaussian", K = 1000L, M=1000L, isApprox = 
 	p1 	= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
 	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
 	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
+
+	scal_x 	= 1/sqrt(colSums(x^2))
+	x 		= x*matrix(rep(scal_x,each=n), nrow=n, ncol=p2)
+	scal_tx	= 1/sqrt(colSums(tx^2))
+	tx		= tx*matrix(rep(scal_tx,each=n), nrow=n, ncol=p1)
 
 	if(p3==1){
 		z1 		= quantile(z, probs = c(0.1, 0.9))
@@ -131,6 +141,11 @@ EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 
 	dims 	= c(n, p1, p2, p3, M, isBeta, maxIter)
 	params 	= c(shape1, shape2, tol)
 
+	scal_x 	= 1/sqrt(colSums(x^2))
+	x 		= x*matrix(rep(scal_x,each=n), nrow=n, ncol=p2)
+	scal_tx	= 1/sqrt(colSums(tx^2))
+	tx		= tx*matrix(rep(scal_tx,each=n), nrow=n, ncol=p1)
+
 	fitglm 	= glm(y~tx-1, family = family)
 	resids 	= residuals(fitglm, type = "response")
 	alphahat= fitglm$coefficients
@@ -181,7 +196,7 @@ EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 
 	return(pvals)
 }
 
-pval <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000){	
+pval <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000){
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}

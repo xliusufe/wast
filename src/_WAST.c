@@ -1902,7 +1902,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
 		}
 	}
-	// printArrayDouble1(w, n, 5, p);
 
 
 	while(step < maxstep){
@@ -1934,21 +1933,18 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			}
 		}
 
-		// printArrayDouble(beta0, p, p);
-
-		ologelr = 0.0;
-		for(j=0;j<p3;j++) zy[j] = 0.0;
 		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p1;j++){
+				tmp += tx[j*n+i]*beta0[j];
+			}
+			yk 	= y[i] - tmp;
 			tmp = 0.0;
 			for(j=0;j<p2;j++){
 				tmp += x[j*n+i]*beta0[j+p1];
 			}
 			wk = h*tmp*sh[i]*(1.0-sh[i]);
-
-			for(j=0;j<p1;j++){
-				tmp += tx[j*n+i]*beta0[j];
-			}
-			yk 	= y[i] - tmp;
+			yk -= tmp*sh[i];
 
 			for(j=0;j<p3;j++){
 				zy[j] 	+= z[j*n+i]*wk*yk;
@@ -1966,8 +1962,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				hessz[j*p3+k] = tmp;
 			}
 		}
-		// printArrayDouble1(hessz, p3, p3, p3);
-		// printArrayDouble(zy, p3, p3);
 
 		if(p3<2){
 			if(hessz[0]<MEPS){
@@ -1986,8 +1980,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				AbyB(theta, hessz, zy, p3, p3, 1);
 			}
 		}
-		// printArrayDouble(theta, p3, p3);
-		// printArrayDouble1(hessz, p3, p3, p3);
 
 		for(j=0; j < p3; j++){
 			theta[j] += theta0[j];
@@ -2026,7 +2018,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 		else{
 			break;
 		}
-		// printf("(ologelr, nlogelr) = (%f,  %f) \n", ologelr, nlogelr);
 	}
 
 	free(beta);
@@ -2074,8 +2065,6 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
 		}
 	}
-
-	// printf("p3 = %d\n",p3);
 
 	while (step < maxstep){
 		step++;
@@ -2158,7 +2147,6 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			nlogelr += y[i]*tmp - log(1+expx);
 		}
 		nlogelr = -2*nlogelr;
-		// printf("nlogelr = %f, ologelr = %f\n", nlogelr, ologelr);
 		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
 			ologelr = nlogelr;
 			for(j=0;j<p3;j++){
