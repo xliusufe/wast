@@ -16,7 +16,7 @@
 
   \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
 
-  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = sqrt(log(n)/n)}}
+  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}}
 
   \item{maxIter}{An integer, the maximum number of iterations. Default is \code{maxIter = 100}.}
 
@@ -26,7 +26,7 @@
 \value{
   \item{alpha}{Estimator of the baseline parameter \eqn{\boldsymbol{\alpha}}.}
   \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}}.}
-  \item{theta}{Estimator of the grouping parameter \eqn{\boldsymbol{\theta}}.}
+  \item{gamma}{Estimator of the grouping parameter \eqn{\boldsymbol{\gamma}}.}
   \item{delta}{A vector with length \eqn{n}. Estimator of the indicator function \eqn{I(\boldsymbol{U}^T\boldsymbol{\gamma}\geq 0)}.}
 }
 
