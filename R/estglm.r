@@ -11,7 +11,7 @@ estglm <- function(data, family = "gaussian", h = NULL, maxIter = 100, tol = 0.0
 	p1 	= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
 	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
 	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
-	h 	= ifelse(is.null(h), n/log(n), 1/h)
+	h 	= ifelse(is.null(h), sqrt(n/log(n)), 1/h)
 
 	scal_tx	= 1/sqrt(colSums(tx^2))
 	tx 		= tx*matrix(rep(scal_tx,each=n), nrow=n, ncol=p1)

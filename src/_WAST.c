@@ -1877,7 +1877,7 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 
 	for(j=0;j<p;j++)	beta0[j] 	= 0.0;
 	for(j=0;j<p3;j++)	theta0[j] 	= 1.0;
-	for(j=0;j<p1;j++) 	xy[j] = 0.0;
+	for(j=0;j<p;j++) 	xy[j] = 0.0;
 	for(i=0;i<n;i++){
 		for(j=0;j<p1;j++){
 			xy[j] 	+= tx[j*n+i]*y[i];
@@ -1888,7 +1888,7 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			w[j*n+i] = tx[j*n+i];
 		}
 	}
-	for(j=p1;j<p;j++) xy[j] = 0.0;
+
 	for(i=0;i<n;i++){
 		tmp = 1.0;
 		for(j=0;j<p3;j++){
@@ -1933,6 +1933,8 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			}
 		}
 
+		ologelr = 0.0;
+		for(j=0;j<p3;j++) zy[j] = 0.0;
 		for(i=0;i<n;i++){
 			tmp = 0.0;
 			for(j=0;j<p1;j++){
@@ -2001,11 +2003,10 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 		}
 		nlogelr = 0.0;
 		for(i=0;i<n;i++){
-			tmp = 0.0;
+			tmp = y[i];
 			for(j=0;j<p;j++){
-				tmp += w[j*n+i]*beta0[j];
+				tmp -= w[j*n+i]*beta0[j];
 			}
-			tmp -= y[i];
 			nlogelr += tmp*tmp;
 		}
 
