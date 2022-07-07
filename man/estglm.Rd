@@ -15,8 +15,8 @@
   \item{data}{A list, including \eqn{Y} (response), \eqn{X} (baseline variable), \eqn{Z} (grouping difference variable), and \eqn{U} (grouping variable).}
 
   \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
-  
-  \item{h}{An numeric number, the bandwidth in the smooth function.}
+
+  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = sqrt(log(n)/n)}}
 
   \item{maxIter}{An integer, the maximum number of iterations. Default is \code{maxIter = 100}.}
 
@@ -24,10 +24,10 @@
 }
 
 \value{
-  \item{alpha}{Estimator of the baseline parameter \eqn{\alpha}.}
-  \item{beta}{Estimator of the grouping difference parameter \eqn{\beta}.}
-  \item{theta}{Estimator of the grouping parameter \eqn{\theta}.}
-  \item{delta}{Estimator of the indicator function \eqn{I(U^T\theta>0)}.}
+  \item{alpha}{Estimator of the baseline parameter \eqn{\boldsymbol{\alpha}}.}
+  \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}}.}
+  \item{theta}{Estimator of the grouping parameter \eqn{\boldsymbol{\theta}}.}
+  \item{delta}{A vector with length \eqn{n}. Estimator of the indicator function \eqn{I(\boldsymbol{U}^T\boldsymbol{\gamma}\geq 0)}.}
 }
 
 \details{
@@ -54,7 +54,7 @@ models in two phase sampling designs. Journal of the Royal Statistical Society: 
 Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
 }
 
-\examples{ 
+\examples{
   data(simulatedData_gaussian)
   fit <- estglm(data = data_gaussian, family = "gaussian")
   fit$alpha
