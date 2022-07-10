@@ -2515,3 +2515,805 @@ SEXP _EST_POISSON(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 	UNPROTECT(4);
 	return list;
 }
+
+//-------------- ESTIMATION of GLM regression by Bootstrap method --------------------------------
+void EstLogisticCP_Weight(double *beta0, double *x, double *y, double *g, double *hess, int n, int p, int maxstep, double eps){
+	int i,j,k, step=0, flag=1;
+	double tmp, bnorm, yk, wk;
+	double *beta, *qy, *dpsi;
+
+	beta 	= (double*)malloc(sizeof(double)*p);
+	qy 		= (double*)malloc(sizeof(double)*p);
+	dpsi 	= (double*)malloc(sizeof(double)*n*p);
+
+	while (step < maxstep){
+		step++;
+
+		for(j=0;j<p;j++) qy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += x[j*n+i]*beta0[j];
+			}
+			wk 	= 1.0/(1.0+exp(-tmp));
+			yk 	= wk - y[i];
+			tmp = wk*(1.0-wk);
+			for(j=0;j<p;j++){
+				qy[j] 	+= x[j*n+i]*yk*g[i];
+				dpsi[j*n+i] = x[j*n+i]*tmp*g[i];
+			}
+		}
+		for(j=0; j < p; j++){
+			for(k=j; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += x[j*n+i]*dpsi[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+		for(j=1; j < p; j++){
+			for(k=0; k < j; k++){
+				hess[j*p+k] = hess[k*p+j];
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				beta0[0] = qy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(beta, hess, qy, p, p, 1);
+			}
+		}
+
+		bnorm = 0.0;
+		for(j=0;j<p;j++){
+			tmp 	=  beta[j];
+			bnorm 	+= tmp*tmp;
+			beta[j] = beta0[j] - tmp;
+		}
+		if(sqrt(bnorm)<eps){
+			break;
+		}
+		else{
+			for(j=0;j<p;j++)
+				beta0[j] = beta[j];
+		}
+	}
+
+	free(beta);
+	free(qy);
+	free(dpsi);
+}
+
+void EstPoissCP_Weight(double *beta0, double *x, double *y, double *g, double *hess, int n, int p, int maxstep, double eps){
+	int i,j,k, step=0, flag=1;
+	double *beta, *qy, *dpsi;
+	double tmp, bnorm, yk, wk;
+
+	beta 	= (double*)malloc(sizeof(double)*p);
+	qy 		= (double*)malloc(sizeof(double)*p);
+	dpsi 	= (double*)malloc(sizeof(double)*n*p);
+
+	while (step < maxstep){
+		step++;
+
+		for(j=0;j<p;j++) qy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += x[j*n+i]*beta0[j];
+			}
+			wk 	= exp(tmp);
+			yk 	= wk - y[i];
+			yk 	*= g[i];
+			wk 	*= g[i];
+			for(j=0;j<p;j++){
+				qy[j] 	+= x[j*n+i]*yk;
+				dpsi[j*n+i] = x[j*n+i]*wk;
+			}
+		}
+		for(j=0; j < p; j++){
+			for(k=j; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += x[j*n+i]*dpsi[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+		for(j=1; j < p; j++){
+			for(k=0; k < j; k++){
+				hess[j*p+k] = hess[k*p+j];
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				beta0[0] = qy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(beta, hess, qy, p, p, 1);
+			}
+		}
+
+		bnorm = 0.0;
+		for(j=0;j<p;j++){
+			tmp 	=  beta[j];
+			bnorm 	+= tmp*tmp;
+			beta[j] = beta0[j] - tmp;
+		}
+		if(sqrt(bnorm)<eps){
+			break;
+		}
+		else{
+			for(j=0;j<p;j++)
+				beta0[j] = beta[j];
+		}
+	}
+
+	free(beta);
+	free(qy);
+	free(dpsi);
+}
+
+void _EstLinearCP_Boot(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, double *g, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, p=p1+p2, flag=1;
+	double tmp, tmp1, phix, ologelr, nlogelr, wk, yk;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *xy, *zy;
+	xy 		= (double*)malloc(sizeof(double)*p);
+	zy 		= (double*)malloc(sizeof(double)*p3);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	beta 	= (double*)malloc(sizeof(double)*p);
+	theta 	= (double*)malloc(sizeof(double)*p3);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	wz 		= (double*)malloc(sizeof(double)*n*p3);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+	hessz	= (double*)malloc(sizeof(double)*p3*p3);
+
+	for(j=0;j<p;j++)	beta0[j] 	= 0.0;
+	for(j=0;j<p3;j++)	theta0[j] 	= 1.0;
+	for(j=0;j<p;j++) 	xy[j] = 0.0;
+	for(i=0;i<n;i++){
+		for(j=0;j<p1;j++){
+			xy[j] 	+= tx[j*n+i]*y[i]*g[i];
+		}
+	}
+	for(j=0;j<p1;j++){
+		for(i=0;i<n;i++){
+			w[j*n+i] = tx[j*n+i];
+		}
+	}
+
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p3;j++){
+			tmp	+= z[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+
+		for(j=0;j<p2;j++){
+			xy[j+p1]	+= x[j*n+i]*y[i]*tmp*g[i];
+			w[(j+p1)*n+i] = x[j*n+i]*tmp;
+		}
+	}
+
+
+	while(step < maxstep){
+		step++;
+		for(j=0; j < p; j++){
+			for(k=0; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += w[j*n+i]*w[k*n+i]*g[i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				beta0[0] = zy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(beta0, hess, xy, p, p, 1);
+			}
+		}
+
+		ologelr = 0.0;
+		for(j=0;j<p3;j++) zy[j] = 0.0;
+		for(i=0;i<n;i++){
+			yk = y[i];
+			for(j=0;j<p1;j++){
+				yk -= tx[j*n+i]*beta0[j];
+			}
+
+			tmp = 0.0;
+			for(j=0;j<p2;j++){
+				tmp += x[j*n+i]*beta0[j+p1];
+			}
+			wk = tmp*dsh[i];
+			yk -= tmp*sh[i];
+
+			for(j=0;j<p3;j++){
+				zy[j] 	+= z[j*n+i]*wk*yk*g[i];
+				wz[j*n+i] = z[j*n+i]*wk;
+			}
+			ologelr += yk*yk*g[i];
+		}
+
+		for(j=0; j < p3; j++){
+			for(k=0; k < p3; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += wz[j*n+i]*wz[k*n+i]*g[i];
+				}
+				hessz[j*p3+k] = tmp;
+			}
+		}
+
+		if(p3<2){
+			if(hessz[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = zy[0]/hessz[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hessz,p3);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hessz, zy, p3, p3, 1);
+			}
+		}
+
+		for(j=0; j < p3; j++){
+			theta[j] += theta0[j];
+		}
+
+		nlogelr = 0.0;
+		for(j=p1;j<p;j++) xy[j] = 0.0;
+		for(i=0;i<n;i++){
+			yk = 1.0;
+			for(j=0;j<p3;j++){
+				yk	+= z[j*n+i]*theta[j];
+			}
+
+			if(smooth==1){
+				yk 		= 1.0/(1.0+exp(-yk*h));
+				sh[i] 	= yk;
+				dsh[i] 	= h*yk*(1-yk);
+			}
+			else if(smooth==2){
+				tmp1 	= yk*h;
+				yk 		= 0.5*erf(SQRT2*tmp1) +0.5;	
+				sh[i] 	= yk;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= yk*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				yk 		= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= yk;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+
+			for(j=0;j<p2;j++){
+				xy[j+p1]	+= x[j*n+i]*y[i]*yk*g[i];
+				w[(j+p1)*n+i] = x[j*n+i]*yk;
+			}
+			tmp = y[i];
+			for(j=0;j<p;j++){
+				tmp -= w[j*n+i]*beta0[j];
+			}
+			nlogelr += tmp*tmp*g[i];
+		}
+
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p3;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(beta);
+	free(theta);
+	free(w);
+	free(wz);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(hessz);
+	free(xy);
+	free(zy);
+}
+
+void _EstLogisticCP_Boot(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, double *g, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, p=p1+p2, flag=1;
+	double tmp, tmp1, phix, yk, expx, wk, ologelr=10000*n, nlogelr;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *zy;
+
+	zy 		= (double*)malloc(sizeof(double)*p3);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	beta 	= (double*)malloc(sizeof(double)*p);
+	theta 	= (double*)malloc(sizeof(double)*p3);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	wz 		= (double*)malloc(sizeof(double)*n*p3);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+	hessz	= (double*)malloc(sizeof(double)*p3*p3);
+
+	for(j=0;j<p;j++)	beta0[j] 	= 0.0;
+	for(j=0;j<p3;j++)	theta0[j] 	= 1.0;
+	for(j=0;j<p1;j++){
+		for(i=0;i<n;i++){
+			w[j*n+i] = tx[j*n+i];
+		}
+	}
+
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p3;j++){
+			tmp	+= z[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+
+		for(j=0;j<p2;j++){
+			w[(j+p1)*n+i] = x[j*n+i]*tmp;
+		}
+	}
+
+	while (step < maxstep){
+		step++;
+
+		EstLogisticCP_Weight(beta0, w, y, g, hess, n, p, maxstep, eps);
+
+		for(j=0;j<p3;j++) zy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += w[j*n+i]*beta0[j];
+			}
+			wk 	= 1.0/(1.0+exp(-tmp));
+
+			tmp = 0.0;
+			for(j=0;j<p2;j++){
+				tmp += x[j*n+i]*beta0[j+p1];
+			}
+			yk 	= y[i] - wk;
+			yk 	*= g[i];
+			tmp = tmp*dsh[i];
+			for(j=0;j<p3;j++){
+				zy[j] 	+= z[j*n+i]*tmp*yk;
+				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk*(1.0-wk)*g[i];
+			}
+		}
+
+		for(j=0; j < p3; j++){
+			for(k=0; k < p3; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += z[j*n+i]*wz[k*n+i];
+				}
+				hessz[j*p3+k] = tmp;
+			}
+		}
+
+		if(p3<2){
+			if(hessz[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = zy[0]/hessz[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hessz,p3);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hessz, zy, p3, p3, 1);
+			}
+		}
+
+		for(j=0; j < p3; j++){
+			theta[j] += theta0[j];
+		}
+
+		for(i=0;i<n;i++){
+			tmp = 1.0;
+			for(j=0;j<p3;j++){
+				tmp	+= z[j*n+i]*theta[j];
+			}
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+
+			for(j=0;j<p2;j++){
+				w[(j+p1)*n+i] = x[j*n+i]*tmp;
+			}
+		}
+
+		nlogelr = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += w[j*n+i]*beta0[j];
+			}
+			expx = exp(tmp);
+			nlogelr += (y[i]*tmp - log(1+expx))*g[i];
+		}
+		nlogelr = -2*nlogelr;
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p3;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(beta);
+	free(theta);
+	free(w);
+	free(wz);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(hessz);
+	free(zy);
+}
+
+void _EstPoissCP_Boot(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, double *g, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, p=p1+p2, flag=1;
+	double tmp, tmp1, phix, yk, wk, ologelr=10000*n, nlogelr;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *zy;
+
+	zy 		= (double*)malloc(sizeof(double)*p3);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	beta 	= (double*)malloc(sizeof(double)*p);
+	theta 	= (double*)malloc(sizeof(double)*p3);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	wz 		= (double*)malloc(sizeof(double)*n*p3);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+	hessz	= (double*)malloc(sizeof(double)*p3*p3);
+
+	for(j=0;j<p;j++)	beta0[j] 	= 0.0;
+	for(j=0;j<p3;j++)	theta0[j] 	= 1.0;
+	for(j=0;j<p1;j++){
+		for(i=0;i<n;i++){
+			w[j*n+i] = tx[j*n+i];
+		}
+	}
+
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p3;j++){
+			tmp	+= z[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+
+		for(j=0;j<p2;j++){
+			w[(j+p1)*n+i] = x[j*n+i]*tmp;
+		}
+	}
+
+	while (step < maxstep){
+		step++;
+
+		EstPoissCP_Weight(beta0, w, y, g, hess, n, p, maxstep, eps);
+
+		for(j=0;j<p3;j++) zy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += w[j*n+i]*beta0[j];
+			}
+			wk = exp(tmp);
+			tmp = 0.0;
+			for(j=0;j<p2;j++){
+				tmp += x[j*n+i]*beta0[j+p1];
+			}
+			yk 	= y[i] - wk;
+			yk 	*= g[i];
+			wk 	*= g[i];
+			tmp = tmp*dsh[i];
+			for(j=0;j<p3;j++){
+				zy[j] 	+= z[j*n+i]*tmp*yk;
+				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk;
+			}
+		}
+
+		for(j=0; j < p3; j++){
+			for(k=0; k < p3; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += z[j*n+i]*wz[k*n+i];
+				}
+				hessz[j*p3+k] = tmp;
+			}
+		}
+
+		if(p3<2){
+			if(hessz[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = zy[0]/hessz[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hessz,p3);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hessz, zy, p3, p3, 1);
+			}
+		}
+
+		for(j=0; j < p3; j++){
+			theta[j] += theta0[j];
+		}
+
+		for(i=0;i<n;i++){
+			tmp = 1.0;
+			for(j=0;j<p3;j++){
+				tmp	+= z[j*n+i]*theta[j];
+			}
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) + 0.5;	
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) + 0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+
+			for(j=0;j<p2;j++){
+				w[(j+p1)*n+i] = x[j*n+i]*tmp;
+			}
+		}
+
+		nlogelr = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += w[j*n+i]*beta0[j];
+			}
+			wk = exp(tmp);
+			nlogelr += (y[i]*tmp - wk)*g[i];// loglokl += y[i]*tmp - log(1+expx) - log(y[i]!)
+		}
+		nlogelr = -2*nlogelr;
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p3;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(beta);
+	free(theta);
+	free(w);
+	free(wz);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(hessz);
+	free(zy);
+}
+
+SEXP _EST_LINEAR_Boot(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP G, SEXP DIMs, SEXP PARAMs){
+	int n, p1, p2, p3, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p1		= INTEGER(DIMs)[1];
+	p2 		= INTEGER(DIMs)[2];
+	p3 		= INTEGER(DIMs)[3];
+	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+	// Outcome
+	SEXP rBeta, rTheta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p1+p2));
+	PROTECT(rTheta 		= allocVector(REALSXP, 	p3));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+
+
+	_EstLinearCP_Boot(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), REAL(G), n, p1, p2, p3, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
+	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rTheta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
+SEXP _EST_LOGISTICR_Boot(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP G, SEXP DIMs, SEXP PARAMs){
+	int n, p1, p2, p3, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p1		= INTEGER(DIMs)[1];
+	p2 		= INTEGER(DIMs)[2];
+	p3 		= INTEGER(DIMs)[3];
+	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+	// Outcome
+	SEXP rBeta, rTheta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p1+p2));
+	PROTECT(rTheta 		= allocVector(REALSXP, 	p3));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+
+
+	_EstLogisticCP_Boot(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), REAL(G), n, p1, p2, p3, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
+	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rTheta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
+SEXP _EST_POISSON_Boot(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP G, SEXP DIMs, SEXP PARAMs){
+	int n, p1, p2, p3, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p1		= INTEGER(DIMs)[1];
+	p2 		= INTEGER(DIMs)[2];
+	p3 		= INTEGER(DIMs)[3];
+	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+	// Outcome
+	SEXP rBeta, rTheta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p1+p2));
+	PROTECT(rTheta 		= allocVector(REALSXP, 	p3));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+
+
+	_EstPoissCP_Boot(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), REAL(G), n, p1, p2, p3, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
+	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rTheta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}

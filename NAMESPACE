@@ -1,5 +1,5 @@
-importFrom("stats", "glm", "quantile", "residuals", "rnorm", "rpois", "runif")
+importFrom("stats", "glm", "quantile", "residuals", "rnorm", "rpois", "runif", "sd", "rbinom", "rexp")
 importFrom("utils", "data")
 useDynLib(wast)
 exportPattern("^[[:alpha:]]+")
-export(exams, pval, estglm)
+export(exams, pval, estglm, estglmBoot)

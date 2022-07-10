@@ -1,14 +1,15 @@
-\name{estglm}
-\alias{estglm}
+\name{estglmBoot}
+\alias{estglmBoot}
 \title{
-  Estimation in Generalized Linear Models with subgroups
+  Estimating standard deviation of parameters by bootstrap method in Generalized Linear Models with subgroups
 }
 \description{
-  Provide estimators of coefficients in generalized linear models with subgroups.
+  Provide estimators of standard deviation of coefficients by bootstrap method in generalized linear models with subgroups.
 }
 
 \usage{
-  estglm(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001)
+  estglmBoot(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
+              weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001)
 }
 
 \arguments{
@@ -20,6 +21,10 @@
 
   \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.} 
 
+  \item{weights}{The weights. Either "exponential" (the default), "norm", or "bernoulli", see details below.}
+
+  \item{B}{An integer, the number of bootstrap samples. Default is \code{B = 1000}.}
+
   \item{maxIter}{An integer, the maximum number of iterations. Default is \code{maxIter = 100}.}
 
   \item{tol}{Convergence threshhold. Default is \code{tol = 0.0001}.}
@@ -30,6 +35,8 @@
   \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}}.}
   \item{gamma}{Estimator of the grouping parameter \eqn{\boldsymbol{\gamma}}.}
   \item{delta}{A vector with length \eqn{n}. Estimator of the indicator function \eqn{I(\boldsymbol{U}^T\boldsymbol{\gamma}\geq 0)}.}
+  \item{std}{A vector with length \eqn{p+q+r-1}. The standard deviation (\code{sd}) of parameter \eqn{(\boldsymbol{\alpha}^T, \boldsymbol{\beta}^T,\boldsymbol{\gamma}_{-1}^T)^T}, 
+  where \eqn{\boldsymbol{\gamma}_{-1}=(\gamma_2,\cdots,\gamma_r)^T}.}
 }
 
 \details{
@@ -42,7 +49,7 @@
   \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
   }
 
-  The smooth functioms:
+  The smooth functioms: 
   \itemize{
   \item (a) sigmoid function ("sigmoid")
   \deqn{
@@ -66,7 +73,15 @@
   and
   \deqn{
   \phi(u)=\frac{1}{2\pi}\exp\left(-\frac{u^2}{2}\right).
-  }   
+  }
+
+
+  The weights from: 
+    \describe{
+    \item{(a)}{exponential distribution with unit rate parameter ("exponential");}
+    \item{(b)}{normal distribution with unit mean and unit variance ("norm");}
+    \item{(c)}{bernoulli distribution, of which value is 0 with probability 0.5 and 2 with probability 0.5.}
+    }
 }
 
 \references{
@@ -84,15 +99,22 @@ Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
 
 \examples{
   data(simulatedData_gaussian)
-  fit <- estglm(data = data_gaussian, family = "gaussian")
+  fit <- estglmBoot(data = data_gaussian, family = "gaussian")
   fit$alpha
-
-  data(simulatedData_binomial)
-  fit <- estglm(data = data_binomial, family = "binomial")
   fit$beta
+  fit$theta
+  fit$std
+  data(simulatedData_binomial)
+  fit <- estglmBoot(data = data_binomial, family = "binomial")
+  fit$alpha
+  fit$beta
+  fit$theta
+  fit$std
 
   data(simulatedData_poisson)
-  fit <- estglm(data = data_poisson, family = "poisson")
+  fit <- estglmBoot(data = data_poisson, family = "poisson")
   fit$alpha
   fit$beta
+  fit$theta
+  fit$std
 }

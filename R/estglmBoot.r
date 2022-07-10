@@ -1,4 +1,4 @@
-estglm <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001) {
+estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001) {
 
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
@@ -59,11 +59,70 @@ estglm <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxI
 	else{
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
+
 	htheta 	= fitglm$theta
 	tbeta 	= fitglm$beta
 	halpha 	= tbeta[1:p1]*scal_tx
 	hbeta 	= tbeta[-c(1:p1)]*scal_x
 	hdelta 	= (1+z%*%htheta>0)
 	htheta 	= c(1, htheta)
-	return(list(alpha = halpha, beta = hbeta, gamma = htheta, delta = hdelta))
+
+
+	halphaB	= matrix(0, nrow = p1, ncol = B)
+	hbetaB	= matrix(0, nrow = p2, ncol = B)
+	hthetaB	= matrix(0, nrow = p3, ncol = B)
+
+	dims 	= c(n, p1, p2, p3, maxIter, type)
+	params 	= c(tol, 1/h)
+	for(b in 1:B){
+		G = switch(weights,
+					'exponential'	= rexp(n),
+					'norm'			= 1 + rnorm(n),
+					'bernoulli'		= 2*rbinom(n,1,prob=0.5)
+					)
+
+		if(family=='gaussian'){
+			fit = .Call("_EST_LINEAR_Boot",
+					as.numeric(y),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
+					as.numeric(G),
+					as.integer(dims),
+					as.numeric(params)
+				)
+		}
+		else if(family == 'binomial'){
+			fit = .Call("_EST_LOGISTICR_Boot",
+					as.numeric(y),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
+					as.numeric(G),
+					as.integer(dims),
+					as.numeric(params)
+				)
+		}
+		else if(family == 'poisson'){
+			fit = .Call("_EST_POISSON_Boot",
+					as.numeric(y),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
+					as.numeric(G),
+					as.integer(dims),
+					as.numeric(params)
+				)
+		}
+		else{
+			stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
+		}
+		tbeta 	= fit$beta
+		halphaB[, b]	= tbeta[1:p1]*scal_tx
+		hbetaB[, b]		= tbeta[-c(1:p1)]*scal_x
+		hthetaB[, b]	= fit$theta
+	}
+	hsigma2 = sqrt(n)*apply(rbind(halphaB, hbetaB, hthetaB), 1, sd)
+
+	return(list(alpha = halpha, beta = hbeta, gamma = htheta, delta = hdelta, std = hsigma2))
 }
