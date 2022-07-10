@@ -3,6 +3,14 @@ estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
+	if(!(weights %in% c('exponential', 'norm','bernoulli'))){
+		weights = 'exponential'
+		stop("Input weights is not one of {'exponential', 'norm', 'bernoulli'}, The default weight 'exponential' is used!")
+	}
+	if(!(smooth %in% c('sigmoid', 'pnorm','mixnorm'))){
+		smooth = 'sigmoid'
+		warning("Input smooth function is not one of {'sigmoid', 'pnorm', 'mixnorm'},  The default smooth function 'sigmoid' is used!")
+	}
 	y 	= data$Y
 	n 	= length(y)
 	tx 	= data$X

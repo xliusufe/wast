@@ -3,6 +3,10 @@ estglm <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxI
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
+	if(!(smooth %in% c('sigmoid', 'pnorm','mixnorm'))){
+		smooth = 'sigmoid'
+		warning("Input smooth function is not one of {'sigmoid', 'pnorm', 'mixnorm'},  The default smooth function 'sigmoid' is used!")
+	}
 	y 	= data$Y
 	n 	= length(y)
 	tx 	= data$X

@@ -210,7 +210,8 @@ pval <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000){
 		pvals  	= EstTn_slr(data, family = family, K = K, M=M)
 	}
 	else{
-		stop("Method must be one of {'wast', 'sst', and 'slrt'} !")
+		warning("Input method is not one of {'wast', 'sst', and 'slrt'}. The default method 'wast' is used!")
+		pvals  	= EstTn_ast(data, family = family, M=M)
 	}
 	return(pvals)
 }

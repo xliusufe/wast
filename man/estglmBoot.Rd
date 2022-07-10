@@ -102,19 +102,19 @@ Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
   fit <- estglmBoot(data = data_gaussian, family = "gaussian")
   fit$alpha
   fit$beta
-  fit$theta
+  fit$gamma
   fit$std
   data(simulatedData_binomial)
   fit <- estglmBoot(data = data_binomial, family = "binomial")
   fit$alpha
   fit$beta
-  fit$theta
+  fit$gamma
   fit$std
 
   data(simulatedData_poisson)
   fit <- estglmBoot(data = data_poisson, family = "poisson")
   fit$alpha
   fit$beta
-  fit$theta
+  fit$gamma
   fit$std
 }
