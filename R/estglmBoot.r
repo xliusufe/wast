@@ -80,8 +80,6 @@ estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
 	hbetaB	= matrix(0, nrow = p2, ncol = B)
 	hthetaB	= matrix(0, nrow = p3, ncol = B)
 
-	dims 	= c(n, p1, p2, p3, maxIter, type)
-	params 	= c(tol, 1/h)
 	for(b in 1:B){
 		G = switch(weights,
 					'exponential'	= rexp(n),
