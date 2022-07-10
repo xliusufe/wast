@@ -8,7 +8,7 @@
 }
 
 \usage{
-  estglm(data, family = "gaussian", h = NULL, maxIter = 100, tol = 0.0001)
+  estglm(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001)
 }
 
 \arguments{
@@ -17,6 +17,8 @@
   \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
 
   \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}}
+
+  \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.} 
 
   \item{maxIter}{An integer, the maximum number of iterations. Default is \code{maxIter = 100}.}
 
@@ -39,6 +41,29 @@
   \deqn{
   \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
   }
+
+  The smooth functioms: (a) sigmoid function ("sigmoid")
+  \deqn{
+  S(u)=1/(1+e^u);
+  }
+ 
+  (b) norm CDF ("pnorm")
+   \deqn{
+  S(u)=\Phi(u);
+  } 
+
+  (c) mixture of norm CDF and density ("mixnorm")
+   \deqn{
+  S(u)=\Phi(u) + u\phi(u),
+  } 
+  where \eqn{\Phi(u)} and \eqn{\phi(u)} are the CDF and density of starndard norm distribution, that is,
+  \deqn{
+  \Phi(u)=\int_{-\infty}^u\frac{1}{2\pi}\exp\left(-\frac{s^2}{2}\right)ds,
+  } 
+  and
+  \deqn{
+  \phi(u)=\frac{1}{2\pi}\exp\left(-\frac{u^2}{2}\right).
+  }   
 }
 
 \references{

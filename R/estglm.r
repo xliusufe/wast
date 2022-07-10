@@ -1,4 +1,4 @@
-estglm <- function(data, family = "gaussian", h = NULL, maxIter = 100, tol = 0.0001) {
+estglm <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001) {
 
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
@@ -18,7 +18,13 @@ estglm <- function(data, family = "gaussian", h = NULL, maxIter = 100, tol = 0.0
 	scal_x 	= 1/sqrt(colSums(x^2))
 	x 		= x*matrix(rep(scal_x,each=n), nrow=n, ncol=p2)
 
-	dims 	= c(n, p1, p2, p3, maxIter)
+	type = switch(smooth,
+					'sigmoid' = 1,
+					'pnorm' = 2,
+					'mixnorm' = 3
+				)
+
+	dims 	= c(n, p1, p2, p3, maxIter, type)
 	params 	= c(tol, h)
 	if(family=='gaussian'){
 		fitglm 	= .Call("_EST_LINEAR",

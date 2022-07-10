@@ -1705,7 +1705,7 @@ SEXP _GLM_WAST(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP RESIDS, SEXP DIMs, SEXP PAR
 //-------------- ESTIMATION of GLM regression --------------------------------
 void EstLogisticCP(double *beta0, double *x, double *y, double *hess, int n, int p, int maxstep, double eps){
 	int i,j,k, step=0, flag=1;
-	double tmp, bnorm, yk, expx, wk;
+	double tmp, bnorm, yk, wk;
 	double *beta, *qy, *dpsi;
 
 	beta 	= (double*)malloc(sizeof(double)*p);
@@ -1721,8 +1721,7 @@ void EstLogisticCP(double *beta0, double *x, double *y, double *hess, int n, int
 			for(j=0;j<p;j++){
 				tmp += x[j*n+i]*beta0[j];
 			}
-			expx = exp(tmp);
-			wk 	= expx/(1.0+expx);
+			wk 	= 1.0/(1.0+exp(-tmp));
 			yk 	= wk - y[i];
 			tmp = wk*(1.0-wk);
 			for(j=0;j<p;j++){
@@ -1861,13 +1860,14 @@ void EstPoissCP(double *beta0, double *x, double *y, double *hess, int n, int p,
 	free(dpsi);
 }
 
-void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps){
+void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
 	int i,j,k, step=0, p=p1+p2, flag=1;
-	double tmp, ologelr, nlogelr, wk, yk;
-	double *beta, *theta, *sh, *hess, *hessz, *w, *wz, *xy, *zy;
+	double tmp, tmp1, phix, ologelr, nlogelr, wk, yk;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *xy, *zy;
 	xy 		= (double*)malloc(sizeof(double)*p);
 	zy 		= (double*)malloc(sizeof(double)*p3);
 	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
 	beta 	= (double*)malloc(sizeof(double)*p);
 	theta 	= (double*)malloc(sizeof(double)*p3);
 	w 		= (double*)malloc(sizeof(double)*n*p);
@@ -1894,14 +1894,32 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 		for(j=0;j<p3;j++){
 			tmp	+= z[j*n+i]*theta0[j];
 		}
-		tmp = 1.0/(1.0+exp(-tmp*h));
-		sh[i] = tmp;
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+		
 
 		for(j=0;j<p2;j++){
 			xy[j+p1]	+= x[j*n+i]*y[i]*tmp;
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
 		}
 	}
+	// printArrayDouble1(w, n, 5, p);
 
 
 	while(step < maxstep){
@@ -1920,7 +1938,7 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				break;
 			}
 			else{
-				beta0[0] = zy[0]/hess[0];
+				beta0[0] = xy[0]/hess[0];
 			}
 		}
 		else{
@@ -1932,6 +1950,8 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				AbyB(beta0, hess, xy, p, p, 1);
 			}
 		}
+
+		// printArrayDouble(beta0, p, p);
 
 		ologelr = 0.0;
 		for(j=0;j<p3;j++) zy[j] = 0.0;
@@ -1945,7 +1965,7 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			for(j=0;j<p2;j++){
 				tmp += x[j*n+i]*beta0[j+p1];
 			}
-			wk = h*tmp*sh[i]*(1.0-sh[i]);
+			wk = tmp*dsh[i];
 			yk -= tmp*sh[i];
 
 			for(j=0;j<p3;j++){
@@ -1964,6 +1984,8 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				hessz[j*p3+k] = tmp;
 			}
 		}
+		// printArrayDouble1(hessz, p3, p3, p3);
+		// printArrayDouble(zy, p3, p3);
 
 		if(p3<2){
 			if(hessz[0]<MEPS){
@@ -1982,6 +2004,8 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				AbyB(theta, hessz, zy, p3, p3, 1);
 			}
 		}
+		// printArrayDouble(theta, p3, p3);
+		// printArrayDouble1(hessz, p3, p3, p3);
 
 		for(j=0; j < p3; j++){
 			theta[j] += theta0[j];
@@ -1993,14 +2017,32 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			for(j=0;j<p3;j++){
 				tmp	+= z[j*n+i]*theta[j];
 			}
-			tmp = 1.0/(1.0+exp(-tmp*h));
-			sh[i] = tmp;
+
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
 
 			for(j=0;j<p2;j++){
 				xy[j+p1]	+= x[j*n+i]*y[i]*tmp;
 				w[(j+p1)*n+i] = x[j*n+i]*tmp;
 			}
 		}
+
 		nlogelr = 0.0;
 		for(i=0;i<n;i++){
 			tmp = y[i];
@@ -2026,19 +2068,21 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 	free(w);
 	free(wz);
 	free(sh);
+	free(dsh);
 	free(hess);
 	free(hessz);
 	free(xy);
 	free(zy);
 }
 
-void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps){
+void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
 	int i,j,k, step=0, p=p1+p2, flag=1;
-	double tmp, yk, expx, wk, ologelr=10000*n, nlogelr;
-	double *beta, *theta, *sh, *hess, *hessz, *w, *wz, *zy;
+	double tmp, tmp1, phix, yk, expx, wk, ologelr=10000*n, nlogelr;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *zy;
 
 	zy 		= (double*)malloc(sizeof(double)*p3);
 	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
 	beta 	= (double*)malloc(sizeof(double)*p);
 	theta 	= (double*)malloc(sizeof(double)*p3);
 	w 		= (double*)malloc(sizeof(double)*n*p);
@@ -2059,13 +2103,31 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 		for(j=0;j<p3;j++){
 			tmp	+= z[j*n+i]*theta0[j];
 		}
-		tmp = 1.0/(1.0+exp(-tmp*h));
-		sh[i] = tmp;
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
 
 		for(j=0;j<p2;j++){
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
 		}
 	}
+
+	// printf("p3 = %d\n",p3);
 
 	while (step < maxstep){
 		step++;
@@ -2078,15 +2140,14 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			for(j=0;j<p;j++){
 				tmp += w[j*n+i]*beta0[j];
 			}
-			expx = exp(tmp);
-			wk 	= expx/(1.0+expx);
+			wk 	= 1.0/(1.0+exp(-tmp));
 
 			tmp = 0.0;
 			for(j=0;j<p2;j++){
 				tmp += x[j*n+i]*beta0[j+p1];
 			}
 			yk 	= y[i] - wk;
-			tmp = h*tmp*sh[i]*(1.0-sh[i]);
+			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
 				zy[j] 	+= z[j*n+i]*tmp*yk;
 				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk*(1.0-wk);
@@ -2102,6 +2163,7 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 				hessz[j*p3+k] = tmp;
 			}
 		}
+		// printArrayDouble1(hessz, p3, p3, p3);
 
 		if(p3<2){
 			if(hessz[0]<MEPS){
@@ -2120,6 +2182,8 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 				AbyB(theta, hessz, zy, p3, p3, 1);
 			}
 		}
+		// printArrayDouble(theta, p3, p3);
+		// printArrayDouble1(hessz, p3, p3, p3);
 
 		for(j=0; j < p3; j++){
 			theta[j] += theta0[j];
@@ -2130,8 +2194,24 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			for(j=0;j<p3;j++){
 				tmp	+= z[j*n+i]*theta[j];
 			}
-			tmp = 1.0/(1.0+exp(-tmp*h));
-			sh[i] = tmp;
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
 
 			for(j=0;j<p2;j++){
 				w[(j+p1)*n+i] = x[j*n+i]*tmp;
@@ -2148,6 +2228,7 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			nlogelr += y[i]*tmp - log(1+expx);
 		}
 		nlogelr = -2*nlogelr;
+		// printf("nlogelr = %f, ologelr = %f\n", nlogelr, ologelr);
 		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
 			ologelr = nlogelr;
 			for(j=0;j<p3;j++){
@@ -2164,18 +2245,20 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 	free(w);
 	free(wz);
 	free(sh);
+	free(dsh);
 	free(hess);
 	free(hessz);
 	free(zy);
 }
 
-void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps){
+void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z, double *y, int n, int p1, int p2, int p3, double h, int maxstep, double eps, int smooth){
 	int i,j,k, step=0, p=p1+p2, flag=1;
-	double tmp, yk, wk, ologelr=10000*n, nlogelr;
-	double *beta, *theta, *sh, *hess, *hessz, *w, *wz, *zy;
+	double tmp, tmp1, phix, yk, wk, ologelr=10000*n, nlogelr;
+	double *beta, *theta, *sh, *dsh, *hess, *hessz, *w, *wz, *zy;
 
 	zy 		= (double*)malloc(sizeof(double)*p3);
 	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
 	beta 	= (double*)malloc(sizeof(double)*p);
 	theta 	= (double*)malloc(sizeof(double)*p3);
 	w 		= (double*)malloc(sizeof(double)*n*p);
@@ -2196,8 +2279,24 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 		for(j=0;j<p3;j++){
 			tmp	+= z[j*n+i]*theta0[j];
 		}
-		tmp = 1.0/(1.0+exp(-tmp*h));
-		sh[i] = tmp;
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
 
 		for(j=0;j<p2;j++){
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
@@ -2221,7 +2320,7 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 				tmp += x[j*n+i]*beta0[j+p1];
 			}
 			yk 	= y[i] - wk;
-			tmp = h*tmp*sh[i]*(1.0-sh[i]);
+			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
 				zy[j] 	+= z[j*n+i]*tmp*yk;
 				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk;
@@ -2265,8 +2364,24 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 			for(j=0;j<p3;j++){
 				tmp	+= z[j*n+i]*theta[j];
 			}
-			tmp = 1.0/(1.0+exp(-tmp*h));
-			sh[i] = tmp;
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;	
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;	
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
 
 			for(j=0;j<p2;j++){
 				w[(j+p1)*n+i] = x[j*n+i]*tmp;
@@ -2299,19 +2414,21 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 	free(w);
 	free(wz);
 	free(sh);
+	free(dsh);
 	free(hess);
 	free(hessz);
 	free(zy);
 }
 
 SEXP _EST_LINEAR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
-	int n, p1, p2, p3, maxstep;
+	int n, p1, p2, p3, maxstep, smooth;
 	double tol, h;
 	n 		= INTEGER(DIMs)[0];
 	p1		= INTEGER(DIMs)[1];
 	p2 		= INTEGER(DIMs)[2];
 	p3 		= INTEGER(DIMs)[3];
 	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
 
 	tol 	= REAL(PARAMs)[0];
 	h   	= REAL(PARAMs)[1];
@@ -2323,7 +2440,7 @@ SEXP _EST_LINEAR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 	PROTECT(list 		= allocVector(VECSXP, 	2));
 
 
-	_EstLinearCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol);
+	_EstLinearCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol, smooth);
 
 	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
 	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
@@ -2336,13 +2453,14 @@ SEXP _EST_LINEAR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 }
 
 SEXP _EST_LOGISTICR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
-	int n, p1, p2, p3, maxstep;
+	int n, p1, p2, p3, maxstep, smooth;
 	double tol, h;
 	n 		= INTEGER(DIMs)[0];
 	p1		= INTEGER(DIMs)[1];
 	p2 		= INTEGER(DIMs)[2];
 	p3 		= INTEGER(DIMs)[3];
 	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
 
 	tol 	= REAL(PARAMs)[0];
 	h   	= REAL(PARAMs)[1];
@@ -2354,7 +2472,7 @@ SEXP _EST_LOGISTICR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 	PROTECT(list_names 	= allocVector(STRSXP, 	2));
 	PROTECT(list 		= allocVector(VECSXP, 	2));
 
-	_EstLogisticCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol);
+	_EstLogisticCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol, smooth);
 
 	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
 	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
@@ -2367,13 +2485,14 @@ SEXP _EST_LOGISTICR(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 }
 
 SEXP _EST_POISSON(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
-	int n, p1, p2, p3, maxstep;
+	int n, p1, p2, p3, maxstep, smooth;
 	double tol, h;
 	n 		= INTEGER(DIMs)[0];
 	p1		= INTEGER(DIMs)[1];
 	p2 		= INTEGER(DIMs)[2];
 	p3 		= INTEGER(DIMs)[3];
 	maxstep	= INTEGER(DIMs)[4];
+	smooth 	= INTEGER(DIMs)[5];
 
 	tol 	= REAL(PARAMs)[0];
 	h   	= REAL(PARAMs)[1];
@@ -2385,7 +2504,7 @@ SEXP _EST_POISSON(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP DIMs, SEXP PARAMs){
 	PROTECT(list_names 	= allocVector(STRSXP, 	2));
 	PROTECT(list 		= allocVector(VECSXP, 	2));
 
-	_EstPoissCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol);
+	_EstPoissCP(REAL(rBeta), REAL(rTheta), REAL(tX), REAL(X), REAL(Z), REAL(Y), n, p1, p2, p3, h, maxstep, tol, smooth);
 
 	SET_STRING_ELT(list_names, 	0,	mkChar("beta"));
 	SET_STRING_ELT(list_names, 	1,	mkChar("theta"));
