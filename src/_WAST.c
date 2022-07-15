@@ -3317,3 +3317,864 @@ SEXP _EST_POISSON_Boot(SEXP Y, SEXP tX, SEXP X, SEXP Z, SEXP G, SEXP DIMs, SEXP 
 	UNPROTECT(4);
 	return list;
 }
+
+//-------------- ESTIMATION of GLM regression by separate bootstrap --------------------------------
+void EstLinear_Weight(double *beta, double *x, double *y, double *g, double *residual, int n, int p, int maxstep, double eps){
+	int i,j,k;
+	double tmp, *hess, *qy;
+
+	qy 		= (double*)malloc(sizeof(double)*p);
+	hess 	= (double*)malloc(sizeof(double)*p*p);
+
+	for(j=0;j<p;j++) 	qy[j] = 0.0;
+	for(i=0;i<n;i++){
+		tmp = y[i]*g[i];
+		for(j=0;j<p;j++){
+			qy[j] 	+= x[j*n+i]*tmp;
+		}
+	}
+
+	for(j=0; j < p; j++){
+		for(k=0; k < p; k++){
+			tmp = 0.0;
+			for(i=0; i<n; i++){
+				tmp += x[j*n+i]*x[k*n+i]*g[i];
+			}
+			hess[j*p+k] = tmp;
+		}
+	}
+
+	if(p<2){
+		hess[0] = qy[0]/hess[0];
+	}
+	else{
+		MatrixInvSymmetric(hess,p);
+		AbyB(beta, hess, qy, p, p, 1);
+	}
+
+	for(i=0;i<n;i++){
+		tmp = y[i];
+		for(j=0;j<p;j++) tmp -= x[j*n+i]*beta[j];
+		residual[i] = tmp;
+	}
+
+	free(hess);
+	free(qy);
+}
+
+void _EstLinear_Weight_Smooth(double *theta0, double *x, double *y, double *xa, double *xb, double *g, int n, int p, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, flag=1;
+	double tmp, tmp1, phix, ologelr, nlogelr, wk, yk;
+	double *theta, *sh, *dsh, *hess, *w, *xy, *resids;
+
+	xy 		= (double*)malloc(sizeof(double)*p);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	theta 	= (double*)malloc(sizeof(double)*p);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+	resids 	= (double*)malloc(sizeof(double)*n);
+
+	// for(j=0;j<p;j++)	theta0[j] 	= 1.0;
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p;j++){
+			tmp	+= x[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+		sh[i] 	*= xb[i];
+		dsh[i] 	*= xb[i];
+		sh[i] 	+= xa[i];
+	}
+	for(i=0;i<n;i++)	resids[i]	= y[i] - sh[i];
+
+	while(step < maxstep){
+		step++;
+
+		ologelr = 0.0;
+		for(j=0;j<p;j++) xy[j] = 0.0;
+		for(i=0;i<n;i++){
+			wk = dsh[i];
+			yk = resids[i];
+			for(j=0;j<p;j++){
+				xy[j] 	+= x[j*n+i]*wk*yk*g[i];
+				w[j*n+i] = x[j*n+i]*wk*wk*g[i];
+			}
+			ologelr += yk*yk*g[i];
+		}
+
+		for(j=0; j < p; j++){
+			for(k=0; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += x[j*n+i]*w[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = xy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hess, xy, p, p, 1);
+			}
+		}
+
+		// bnorm = 0.0;
+		// for(j=0;j<p;j++){
+		// 	tmp 	=  theta[j];
+		// 	bnorm 	+= tmp*tmp;
+		// 	theta[j] += theta0[j];
+		// }
+		// if(sqrt(bnorm)<eps){
+		// 	break;
+		// }
+		// else{
+		// 	for(j=0;j<p;j++)
+		// 		theta0[j] = theta[j];
+		// }
+
+		for(j=0; j < p; j++){
+			theta[j] += theta0[j];
+		}
+
+		for(i=0;i<n;i++){
+			tmp = 1.0;
+			for(j=0;j<p;j++){
+				tmp	+= x[j*n+i]*theta[j];
+			}
+
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+			sh[i] 	*= xb[i];
+			dsh[i] 	*= xb[i];
+			sh[i] 	+= xa[i];
+		}
+
+		nlogelr = 0.0;
+		for(i=0;i<n;i++){
+			yk = y[i] - sh[i];
+			resids[i] = yk;
+			nlogelr += yk*yk*g[i];
+		}
+
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(theta);
+	free(w);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(xy);
+	free(resids);
+}
+
+void EstLogistic_Weight(double *alpha, double *x, double *y, double *g, double *residual, int n, int p, int maxIter, double tol){
+	int i,j, k,step=0, flag=1;
+	double tmp, yk, wk, bnorm;
+	double *alpha0, *dpsi, *qy, *hess;
+
+	alpha0 	= (double*)malloc(sizeof(double)*p);
+	qy 		= (double*)malloc(sizeof(double)*p);
+	dpsi 	= (double*)malloc(sizeof(double)*n*p);
+	hess 	= (double*)malloc(sizeof(double)*n*p);
+
+	// for(j=0; j < p; j++){
+	// 	alpha0[j] = 0.0;
+	// }
+	while(step<maxIter){
+		step++;
+
+		for(j=0;j<p;j++) qy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += x[j*n+i]*alpha0[j];
+			}
+			wk 	= 1.0/(1.0+exp(-tmp));
+			yk 	= y[i] - wk;
+			tmp = wk*(1.0-wk);
+			for(j=0;j<p;j++){
+				qy[j] 	+= x[j*n+i]*yk*g[i];
+				dpsi[j*n+i] = x[j*n+i]*tmp*g[i];
+			}
+		}
+
+		for(j=0; j < p; j++){
+			for(k=j; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += x[j*n+i]*dpsi[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+		for(j=1; j < p; j++){
+			for(k=0; k < j; k++){
+				hess[j*p+k] = hess[k*p+j];
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				alpha[0] = qy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(alpha, hess, qy, p, p, 1);
+			}
+		}
+
+		bnorm = 0.0;
+		for(j=0;j<p;j++){
+			tmp 	=  alpha[j];
+			bnorm 	+= tmp*tmp;
+			alpha[j] += alpha0[j];
+		}
+		if(sqrt(bnorm)<tol){
+			break;
+		}
+		else{
+			for(j=0;j<p;j++){
+				alpha0[j] = alpha[j];
+			}
+		}
+	}
+
+	for(i=0; i<n; i++){
+		tmp = 0.0;
+		for(j=0;j<p;j++){
+			tmp += x[j*n+i]*alpha0[j];
+		}
+		wk 	= 1.0/(1.0+exp(-tmp));
+		residual[i] = y[i] - wk;
+	}
+
+	free(alpha0);
+	free(qy);
+	free(dpsi);
+	free(hess);
+}
+
+void EstLogistic_Weight_Smooth(double *theta0, double *z, double *y, double *xa, double *xb, double *g, int n, int p, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, flag=1;
+	double tmp, tmp1, phix, yk, wk, ologelr=10000*n, nlogelr, resids, weight;
+	double *theta, *sh, *dsh, *hess, *w, *zy;
+
+	zy 		= (double*)malloc(sizeof(double)*p);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	theta 	= (double*)malloc(sizeof(double)*p);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+
+	for(j=0;j<p;j++)	theta0[j] 	= 1.0;
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p;j++){
+			tmp	+= z[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+		sh[i] 	*= xb[i];
+		dsh[i] 	*= xb[i];
+		sh[i] 	+= xa[i];
+	}
+
+	while (step < maxstep){
+		step++;
+
+		for(j=0;j<p;j++) zy[j] = 0.0;
+		for(i=0;i<n;i++){
+			wk 		= 1.0/(1.0+exp(-sh[i]));
+			resids	= y[i] - wk;
+			weight	= wk*(1.0-wk);
+
+			tmp 	= dsh[i];
+			yk 		= tmp*resids*g[i];
+			wk 		= tmp*tmp*weight*g[i];
+			for(j=0;j<p;j++){
+				zy[j] 	+= z[j*n+i]*yk;
+				w[j*n+i] = z[j*n+i]*wk;
+			}
+		}
+
+		for(j=0; j < p; j++){
+			for(k=0; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += z[j*n+i]*w[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = zy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hess, zy, p, p, 1);
+			}
+		}
+
+		for(j=0; j < p; j++){
+			theta[j] += theta0[j];
+		}
+
+		for(i=0;i<n;i++){
+			tmp = 1.0;
+			for(j=0;j<p;j++){
+				tmp	+= z[j*n+i]*theta[j];
+			}
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+			sh[i] 	*= xb[i];
+			dsh[i] 	*= xb[i];
+			sh[i] 	+= xa[i];
+		}
+
+		nlogelr = 0.0;
+		for(i=0;i<n;i++){
+			wk = exp(sh[i]);
+			nlogelr += (y[i]*sh[i] - log(1+wk))*g[i];
+		}
+		nlogelr = -2*nlogelr;
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(theta);
+	free(w);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(zy);
+}
+
+void EstPoisson_Weight(double *alpha, double *x, double *y, double *g, double *residual, int n, int p, int maxIter, double tol){
+	int i,j, k,step=0, flag=1;
+	double tmp, yk, wk, bnorm;
+	double *alpha0, *dpsi, *qy, *hess;
+
+	alpha0 	= (double*)malloc(sizeof(double)*p);
+	qy 		= (double*)malloc(sizeof(double)*p);
+	dpsi 	= (double*)malloc(sizeof(double)*n*p);
+	hess 	= (double*)malloc(sizeof(double)*n*p);
+
+	// for(j=0; j < p; j++){
+	// 	alpha0[j] = 0.0;
+	// }
+	while(step<maxIter){
+		step++;
+
+		for(j=0;j<p;j++) qy[j] = 0.0;
+		for(i=0;i<n;i++){
+			tmp = 0.0;
+			for(j=0;j<p;j++){
+				tmp += x[j*n+i]*alpha0[j];
+			}
+			wk 	= exp(tmp);
+			yk 	= y[i] - wk;
+			yk 	*= g[i];
+			wk 	*= g[i];
+			for(j=0;j<p;j++){
+				qy[j] 	+= x[j*n+i]*yk;
+				dpsi[j*n+i] = x[j*n+i]*wk;
+			}
+		}
+
+		for(j=0; j < p; j++){
+			for(k=j; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += x[j*n+i]*dpsi[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+		for(j=1; j < p; j++){
+			for(k=0; k < j; k++){
+				hess[j*p+k] = hess[k*p+j];
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				alpha[0] = qy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(alpha, hess, qy, p, p, 1);
+			}
+		}
+
+		bnorm = 0.0;
+		for(j=0;j<p;j++){
+			tmp 	=  alpha[j];
+			bnorm 	+= tmp*tmp;
+			alpha[j] += alpha0[j];
+		}
+		if(sqrt(bnorm)<tol){
+			break;
+		}
+		else{
+			for(j=0;j<p;j++){
+				alpha0[j] = alpha[j];
+			}
+		}
+	}
+
+	for(i=0; i<n; i++){
+		tmp = 0.0;
+		for(j=0;j<p;j++){
+			tmp += x[j*n+i]*alpha0[j];
+		}
+		wk 	= exp(tmp);
+		residual[i] = y[i] - wk;
+	}
+
+	free(alpha0);
+	free(qy);
+	free(dpsi);
+	free(hess);
+}
+
+void EstPoisson_Weight_Smooth(double *theta0, double *z, double *y, double *xa, double *xb, double *g, int n, int p, double h, int maxstep, double eps, int smooth){
+	int i,j,k, step=0, flag=1;
+	double tmp, tmp1, phix, yk, wk, ologelr=10000*n, nlogelr, resids;
+	double *theta, *sh, *dsh, *hess, *w, *zy;
+
+	zy 		= (double*)malloc(sizeof(double)*p);
+	sh 		= (double*)malloc(sizeof(double)*n);
+	dsh 	= (double*)malloc(sizeof(double)*n);
+	theta 	= (double*)malloc(sizeof(double)*p);
+	w 		= (double*)malloc(sizeof(double)*n*p);
+	hess	= (double*)malloc(sizeof(double)*p*p);
+
+	for(j=0;j<p;j++)	theta0[j] 	= 1.0;
+	for(i=0;i<n;i++){
+		tmp = 1.0;
+		for(j=0;j<p;j++){
+			tmp	+= z[j*n+i]*theta0[j];
+		}
+		if(smooth==1){
+			tmp 	= 1.0/(1.0+exp(-tmp*h));
+			sh[i] 	= tmp;
+			dsh[i] 	= h*tmp*(1-tmp);
+		}
+		else if(smooth==2){
+			tmp1 	= tmp*h;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+		}
+		else{
+			tmp1 	= tmp*h;
+			phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+			tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+			sh[i] 	= tmp;
+			dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+		}
+		sh[i] 	*= xb[i];
+		dsh[i] 	*= xb[i];
+		sh[i] 	+= xa[i];
+	}
+
+	while (step < maxstep){
+		step++;
+
+		for(j=0;j<p;j++) zy[j] = 0.0;
+		for(i=0;i<n;i++){
+			wk 		= exp(sh[i]);
+			resids	= y[i] - wk;
+			tmp 	= dsh[i];
+			yk 		= tmp*resids*g[i];
+			wk 		= tmp*tmp*wk*g[i];
+			for(j=0;j<p;j++){
+				zy[j] 	+= z[j*n+i]*yk;
+				w[j*n+i] = z[j*n+i]*wk;
+			}
+		}
+
+		for(j=0; j < p; j++){
+			for(k=0; k < p; k++){
+				tmp = 0.0;
+				for(i=0; i<n; i++){
+					tmp += z[j*n+i]*w[k*n+i];
+				}
+				hess[j*p+k] = tmp;
+			}
+		}
+
+		if(p<2){
+			if(hess[0]<MEPS){
+				break;
+			}
+			else{
+				theta[0] = zy[0]/hess[0];
+			}
+		}
+		else{
+			flag = MatrixInvSymmetric(hess,p);
+			if(flag<0){
+				break;
+			}
+			else{
+				AbyB(theta, hess, zy, p, p, 1);
+			}
+		}
+
+		for(j=0; j < p; j++){
+			theta[j] += theta0[j];
+		}
+
+		for(i=0;i<n;i++){
+			tmp = 1.0;
+			for(j=0;j<p;j++){
+				tmp	+= z[j*n+i]*theta[j];
+			}
+			if(smooth==1){
+				tmp 	= 1.0/(1.0+exp(-tmp*h));
+				sh[i] 	= tmp;
+				dsh[i] 	= h*tmp*(1-tmp);
+			}
+			else if(smooth==2){
+				tmp1 	= tmp*h;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*exp(-0.5*tmp1*tmp1)*MPI2;
+			}
+			else{
+				tmp1 	= tmp*h;
+				phix 	= exp(-0.5*tmp1*tmp1)*MPI2;
+				tmp 	= 0.5*erf(SQRT2*tmp1) +0.5 + tmp1*phix;
+				sh[i] 	= tmp;
+				dsh[i] 	= h*phix*(2 - tmp1*tmp1);
+			}
+			sh[i] 	*= xb[i];
+			dsh[i] 	*= xb[i];
+			sh[i] 	+= xa[i];
+		}
+
+		nlogelr = 0.0;
+		for(i=0;i<n;i++){
+			wk = exp(sh[i]);
+			nlogelr += (y[i]*sh[i] - log(1+wk))*g[i];// loglokl += y[i]*tmp - log(1+expx) - log(y[i]!)
+		}
+		nlogelr = -2*nlogelr;
+		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
+			ologelr = nlogelr;
+			for(j=0;j<p;j++){
+				theta0[j] = theta[j];
+			}
+		}
+		else{
+			break;
+		}
+	}
+
+	free(theta);
+	free(w);
+	free(sh);
+	free(dsh);
+	free(hess);
+	free(zy);
+}
+
+SEXP _EST_LINEAR_WEIGHT(SEXP Y_, SEXP X_, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	// dimensions
+	int n, p, maxstep;
+	double tol;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+
+	tol 	= REAL(PARAMs)[0];
+
+	// Outcome
+	SEXP rBeta, rResids, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(rResids		= allocVector(REALSXP, 	n));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+
+	EstLinear_Weight(REAL(rBeta), REAL(X_), REAL(Y_), REAL(G), REAL(rResids), n, p, maxstep, tol);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_STRING_ELT(list_names, 	1,  mkChar("residuals"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rResids);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
+SEXP _EST_LINEAR_WEIGHT_SMOOTH(SEXP Y_, SEXP X_, SEXP THETA0, SEXP XA, SEXP XB, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	// dimensions
+	int n, p, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+	smooth 	= INTEGER(DIMs)[3];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+
+	// Outcome
+	SEXP rBeta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(list_names 	= allocVector(STRSXP, 	1));
+	PROTECT(list 		= allocVector(VECSXP, 	1));
+	for(int i=0; i<p; i++) REAL(rBeta)[i] = REAL(THETA0)[i];
+
+	_EstLinear_Weight_Smooth(REAL(rBeta), REAL(X_), REAL(Y_), REAL(XA), REAL(XB), REAL(G), n, p, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(3);
+	return list;
+}
+
+SEXP _EST_LOGISTIC_WEIGHT(SEXP Y_, SEXP X_, SEXP BETA0, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	int n, p, maxstep;
+	double tol;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+
+	tol 	= REAL(PARAMs)[0];
+
+	// Outcome
+	SEXP rBeta, rResids, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(rResids		= allocVector(REALSXP, 	n));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+	for(int i=0; i<p; i++) REAL(rBeta)[i] = REAL(BETA0)[i];
+
+	EstLogistic_Weight(REAL(rBeta), REAL(X_), REAL(Y_), REAL(G), REAL(rResids), n, p, maxstep, tol);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_STRING_ELT(list_names, 	1,  mkChar("residuals"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rResids);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
+SEXP _EST_LOGISTIC_WEIGHT_SMOOTH(SEXP Y_, SEXP X_, SEXP THETA0, SEXP XA, SEXP XB, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	// dimensions
+	int n, p, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+	smooth 	= INTEGER(DIMs)[3];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+
+	// Outcome
+	SEXP rBeta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(list_names 	= allocVector(STRSXP, 	1));
+	PROTECT(list 		= allocVector(VECSXP, 	1));
+	for(int i=0; i<p; i++) REAL(rBeta)[i] = REAL(THETA0)[i];
+
+	EstLogistic_Weight_Smooth(REAL(rBeta), REAL(X_), REAL(Y_), REAL(XA), REAL(XB), REAL(G), n, p, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(3);
+	return list;
+}
+
+SEXP _EST_POISSON_WEIGHT(SEXP Y_, SEXP X_, SEXP BETA0, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	int n, p, maxstep;
+	double tol;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+
+	tol 	= REAL(PARAMs)[0];
+
+	// Outcome
+	SEXP rBeta, rResids, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(rResids		= allocVector(REALSXP, 	n));
+	PROTECT(list_names 	= allocVector(STRSXP, 	2));
+	PROTECT(list 		= allocVector(VECSXP, 	2));
+	for(int i=0; i<p; i++) REAL(rBeta)[i] = REAL(BETA0)[i];
+
+	EstPoisson_Weight(REAL(rBeta), REAL(X_), REAL(Y_), REAL(G), REAL(rResids), n, p, maxstep, tol);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_STRING_ELT(list_names, 	1,  mkChar("residuals"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	SET_VECTOR_ELT(list, 		1, 	rResids);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(4);
+	return list;
+}
+
+SEXP _EST_POISSON_WEIGHT_SMOOTH(SEXP Y_, SEXP X_, SEXP THETA0, SEXP XA, SEXP XB, SEXP G, SEXP DIMs, SEXP PARAMs)
+{
+	// dimensions
+	int n, p, maxstep, smooth;
+	double tol, h;
+	n 		= INTEGER(DIMs)[0];
+	p		= INTEGER(DIMs)[1];
+	maxstep	= INTEGER(DIMs)[2];
+	smooth 	= INTEGER(DIMs)[3];
+
+	tol 	= REAL(PARAMs)[0];
+	h   	= REAL(PARAMs)[1];
+
+	// Outcome
+	SEXP rBeta, list, list_names;
+	PROTECT(rBeta 		= allocVector(REALSXP, 	p));
+	PROTECT(list_names 	= allocVector(STRSXP, 	1));
+	PROTECT(list 		= allocVector(VECSXP, 	1));
+	for(int i=0; i<p; i++) REAL(rBeta)[i] = REAL(THETA0)[i];
+
+	EstPoisson_Weight_Smooth(REAL(rBeta),  REAL(X_), REAL(Y_), REAL(XA), REAL(XB), REAL(G), n, p, h, maxstep, tol, smooth);
+
+	SET_STRING_ELT(list_names, 	0,	mkChar("coef"));
+	SET_VECTOR_ELT(list, 		0, 	rBeta);
+	setAttrib(list, R_NamesSymbol, 	list_names);
+
+	UNPROTECT(3);
+	return list;
+}

@@ -14,7 +14,7 @@
 \arguments{
   \item{data}{A list, including \eqn{Y} (response), \eqn{X} (baseline variable), \eqn{Z} (grouping difference variable), and \eqn{U} (grouping variable).}
 
-  \item{family}{Family for generalized linear models, including 'Gaussian', 'binomial', and 'Poisson'.}
+  \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
   
   \item{method}{There are there methods, including the proposed 'wast', 'sst', and 'slrt'.}
 
