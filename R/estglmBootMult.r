@@ -1,7 +1,16 @@
-estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001) {
+estglmBootMult <- function(data, family = "gaussian", ng = 2, h = NULL, smooth = "sigmoid", weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001) {
 
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
+	}
+	if(ng<1){
+		warning("The number of change-planes must be equal or greater than one.  The default ng = 2 is used!")
+		ng = 2
+	}
+	else if(ng==1){
+		warning("The number of multiple change-planes is equal or greater than two. If ng = 1, the single change-plane model is used, which is same as function 'estglmBoot'!")
+		fit = estglmBoot <- function(data, family = family, h = h, smooth = smooth, maxIter = maxIter, tol = tol)
+		return(fit)
 	}
 	if(!(weights %in% c('exponential', 'norm','bernoulli'))){
 		weights = 'exponential'
@@ -15,8 +24,8 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 	n 	= length(y)
 	tx 	= data$X
 	x 	= data$Z
-	z 	= data$U[,-1]
-	p1 	= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
+	z 	= data$U
+	p1 	= ifelse(is.null(ncol(tx)), 1, ncol(tx))
 	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
 	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
 	h 	= ifelse(is.null(h), sqrt(n)/log(n), 1/h)
@@ -32,10 +41,13 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 					'mixnorm'	= 3
 				)
 
-	dims 	= c(n, p1, p2, p3, maxIter, type)
+	abeta0 	= c(rep(0, p1+ng*p2), rep(1,p3-1), seq(-0.5,0.5,length.out = ng))
+	dims 	= c(n, p1, p2, p3-1, maxIter, type, ng)
 	params 	= c(tol, h)
+
 	if(family=='gaussian'){
-		fitglm 	= .Call("_EST_LINEAR",
+		fitglm 	= .Call("_EST_LINEAR_MULTI",
+					as.numeric(abeta0),
 					as.numeric(y),
 					as.numeric(tx),
 					as.numeric(x),
@@ -45,7 +57,8 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 				)
 	}
 	else if(family == 'binomial'){
-		fitglm 	= .Call("_EST_LOGISTICR",
+		fitglm 	= .Call("_EST_LOGISTICR_MULTI",
+					as.numeric(abeta0),
 					as.numeric(y),
 					as.numeric(tx),
 					as.numeric(x),
@@ -55,7 +68,8 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 				)
 	}
 	else if(family == 'poisson'){
-		fitglm 	= .Call("_EST_POISSON",
+		fitglm 	= .Call("_EST_POISSON_MULTI",
+					as.numeric(abeta0),
 					as.numeric(y),
 					as.numeric(tx),
 					as.numeric(x),
@@ -67,39 +81,24 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 	else{
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
-
 	htheta 	= fitglm$theta
 	tbeta 	= fitglm$beta
-	halpha 	= tbeta[1:p1]
-	hbeta 	= tbeta[-c(1:p1)]
-	hdelta 	= (1+z%*%htheta>0)
-
-	zt 		= (z%*%htheta)/h
-	if(smooth == 'sigmoid'){
-		sh 	= 1.0/(1.0+exp(-zt))
-	}
-	else if(smooth == 'pnorm'){
-		sh 	= pnorm(zt)
-	}
-	else{
-		sh 	= pnorm(zt) + zt*dnorm(zt)
-	}
-	w1 		= cbind(tx, x*as.numeric(sh))
-	xa 		= tx%*%halpha
-	xb 		= x%*%hbeta
-
 	halpha 	= tbeta[1:p1]*scal_tx
-	hbeta 	= tbeta[-c(1:p1)]*scal_x
-	htheta 	= c(1, htheta[-1])
+	ha 		= fitglm$ha
+	hbeta 	= rep(0, p2*ng)
+	hdelta 	= matrix(0, nrow = n,  ncol = ng)
+	for(k in 1:ng){
+		hbeta[((k-1)*p2+1):(k*p2)] = tbeta[(p1+(k-1)*p2+1):(p1+k*p2)]*scal_x
+		hdelta[,k] 	= (z[,1]+z[,-1]%*%htheta>ha[k])
+	}
+	htheta 	= c(1, htheta)
+
 
 	halphaB	= matrix(0, nrow = p1, ncol = B)
-	hbetaB	= matrix(0, nrow = p2, ncol = B)
+	hbetaB	= matrix(0, nrow = ng*p2, ncol = B)
 	hthetaB	= matrix(0, nrow = p3, ncol = B)
+	haB		= matrix(0, nrow = ng, ncol = B)
 
-
-	abeta0 	= rep(0, p1+p2)
-	dims 	= c(n, ncol(w1), maxIter)
-	params 	= c(tol)
 	for(b in 1:B){
 		G = switch(weights,
 					'exponential'	= rexp(n),
@@ -107,29 +106,36 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 					'bernoulli'		= 2*rbinom(n,1,prob=0.5)
 					)
 		if(family=='gaussian'){
-			fit = .Call("_EST_LINEAR_WEIGHT",
+			fit = .Call("_EST_LINEAR_MULTI_BOOT",
+					as.numeric(abeta0),
 					as.numeric(y),
-					as.numeric(w1),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
 					as.numeric(G),
 					as.integer(dims),
 					as.numeric(params)
 				)
 		}
 		else if(family == 'binomial'){
-			fit = .Call("_EST_LOGISTIC_WEIGHT",
-					as.numeric(y),
-					as.numeric(w1),
+			fit = .Call("_EST_LOGISTICR_MULTI_BOOT",
 					as.numeric(abeta0),
+					as.numeric(y),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
 					as.numeric(G),
 					as.integer(dims),
 					as.numeric(params)
 				)
 		}
 		else if(family == 'poisson'){
-			fit = .Call("_EST_POISSON_WEIGHT",
-					as.numeric(y),
-					as.numeric(w1),
+			fit = .Call("_EST_POISSON_MULTI_BOOT",
 					as.numeric(abeta0),
+					as.numeric(y),
+					as.numeric(tx),
+					as.numeric(x),
+					as.numeric(z),
 					as.numeric(G),
 					as.integer(dims),
 					as.numeric(params)
@@ -138,64 +144,15 @@ estglmBootSep <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid
 		else{
 			stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 		}
-		tbeta 	= fit$coef
-		halphaB[, b]	= tbeta[1:p1]*scal_tx
-		hbetaB[, b]		= tbeta[-c(1:p1)]*scal_x
-
+		tbeta 	= fit$beta
+		halphaB[, b]= tbeta[1:p1]*scal_tx
+		for(k in 1:ng){
+			hbetaB[((k-1)*p2+1):(k*p2),b] = tbeta[(p1+(k-1)*p2+1):(p1+k*p2)]*scal_x
+		}
+		hthetaB[, b]	= c(1,fit$theta)
+		haB[, b]		= fit$ha
 	}
+	hsigma2 = sqrt(n)*apply(rbind(halphaB, hbetaB, hthetaB, haB), 1, sd)
 
-	theta0 	= rep(1, p3)
-	dims 	= c(n, ncol(z), maxIter, type)
-	params 	= c(tol, h)
-	for(b in 1:B){
-		G = switch(weights,
-					'exponential'	= rexp(n),
-					'norm'			= 1 + rnorm(n),
-					'bernoulli'		= 2*rbinom(n,1,prob=0.5)
-					)
-		if(family=='gaussian'){
-			fit = .Call("_EST_LINEAR_WEIGHT_SMOOTH",
-					as.numeric(y),
-					as.numeric(z),
-					as.numeric(theta0),
-					as.numeric(xa),
-					as.numeric(xb),
-					as.numeric(G),
-					as.integer(dims),
-					as.numeric(params)
-				)
-		}
-		else if(family == 'binomial'){
-			fit = .Call("_EST_LOGISTIC_WEIGHT_SMOOTH",
-					as.numeric(y),
-					as.numeric(z),
-					as.numeric(theta0),
-					as.numeric(xa),
-					as.numeric(xb),
-					as.numeric(G),
-					as.integer(dims),
-					as.numeric(params)
-				)
-		}
-		else if(family == 'poisson'){
-			fit = .Call("_EST_POISSON_WEIGHT_SMOOTH",
-					as.numeric(y),
-					as.numeric(z),
-					as.numeric(theta0),
-					as.numeric(xa),
-					as.numeric(xb),
-					as.numeric(G),
-					as.integer(dims),
-					as.numeric(params)
-				)
-		}
-		else{
-			stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
-		}
-		hthetaB[, b]	= fit$coef
-
-	}
-	hsigma2 = sqrt(n)*apply(rbind(halphaB, hbetaB, hthetaB), 1, sd)
-
-	return(list(alpha = halpha, beta = hbeta, gamma = htheta, delta = hdelta, std = hsigma2))
+	return(list(alpha = halpha, beta = hbeta, gamma = htheta, delta = hdelta, ha = ha, std = hsigma2))
 }

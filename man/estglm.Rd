@@ -16,7 +16,7 @@
 
   \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
 
-  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}}
+  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}.}
 
   \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.} 
 

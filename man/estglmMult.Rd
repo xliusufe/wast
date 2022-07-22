@@ -1,18 +1,14 @@
-\name{estglmBootSep}
-\alias{estglmBootSep}
+\name{estglmMult}
+\alias{estglmMult}
 \title{
-  Estimating standard deviation of parameters by separate bootstrap method in Generalized Linear Models with subgroups
+  Estimation in Generalized Linear Models with multiple change-planes
 }
 \description{
-  Provide estimators of standard deviation of coefficients by separate bootstrap method in generalized linear models with subgroups. The separate bootstrap method sovles the bootstrap estimators
-  of \eqn{(\boldsymbol{\alpha}^T,\boldsymbol{\beta}^T)^T} and \eqn{\boldsymbol{\gamma}} separately. More specifically, given estimator \eqn{\hat{\boldsymbol{\gamma}}}, 
-  we get MLE \eqn{(\hat{\boldsymbol{\alpha}}^{*T},\hat{\boldsymbol{\beta}}^{*T})^T} based on bootstrap samples, and then given estimator \eqn{(\hat{\boldsymbol{\alpha}}^T,\hat{\boldsymbol{\beta}}^T)^T}, 
-  we get MLE \eqn{\hat{\boldsymbol{\gamma}}^*} based on bootstrap samples.
+  Provide estimators of coefficients in generalized linear models with multiple change-planes.
 }
 
 \usage{
-  estglmBootSep(data, family = "gaussian", h = NULL, smooth = "sigmoid",
-              weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001)
+  estglmMult(data, family = "gaussian", ng = 2, h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001)
 }
 
 \arguments{
@@ -20,13 +16,11 @@
 
   \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
 
+  \item{ng}{An integer, which is the number of change-planes. Default is \code{ng = 2}.}
+
   \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}}
 
-  \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.}
-
-  \item{weights}{The weights. Either "exponential" (the default), "norm", or "bernoulli", see details below.}
-
-  \item{B}{An integer, the number of bootstrap samples. Default is \code{B = 1000}.}
+  \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.} 
 
   \item{maxIter}{An integer, the maximum number of iterations. Default is \code{maxIter = 100}.}
 
@@ -38,8 +32,7 @@
   \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}}.}
   \item{gamma}{Estimator of the grouping parameter \eqn{\boldsymbol{\gamma}}.}
   \item{delta}{A vector with length \eqn{n}. Estimator of the indicator function \eqn{I(\boldsymbol{U}^T\boldsymbol{\gamma}\geq 0)}.}
-  \item{std}{A vector with length \eqn{p+q+r-1}. The standard deviation (\code{sd}) of parameter \eqn{(\boldsymbol{\alpha}^T, \boldsymbol{\beta}^T,\boldsymbol{\gamma}_{-1}^T)^T}, 
-  where \eqn{\boldsymbol{\gamma}_{-1}=(\gamma_2,\cdots,\gamma_r)^T}.}
+  \item{ha}{Estimator of the threshholds \eqn{\{a_1, \cdots, a_S\}}, where \eqn{S} equals to \code{ng}.}
 }
 
 \details{
@@ -49,8 +42,9 @@
   }
   where
   \deqn{
-  \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
+  \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\sum_{s=1}^{S}\boldsymbol{\beta}_s{\boldsymbol 1}(U_i+\boldsymbol{U}_{2i}^T\boldsymbol{\gamma}_{-1}\geq a_s),
   }
+  with the identifiable restraint that \eqn{a_1< a_2<\cdots< a_S}.
 
   The smooth functioms:
   \itemize{
@@ -77,14 +71,6 @@
   \deqn{
   \phi(u)=\frac{1}{2\pi}\exp\left(-\frac{u^2}{2}\right).
   }
-
-
-  The weights from:
-    \describe{
-    \item{(a)}{exponential distribution with unit rate parameter ("exponential");}
-    \item{(b)}{normal distribution with unit mean and unit variance ("norm");}
-    \item{(c)}{bernoulli distribution, of which value is 0 with probability 0.5 and 2 with probability 0.5.}
-    }
 }
 
 \references{
@@ -102,23 +88,15 @@ Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
 
 \examples{
   data(simulatedData_gaussian)
-  fit <- estglmBootSep(data = data_gaussian, family = "gaussian")
+  fit <- estglmMult(data = data_gaussian, family = "gaussian")
   fit$alpha
-  fit$beta
-  fit$gamma
-  fit$std
 
   data(simulatedData_binomial)
-  fit <- estglmBootSep(data = data_binomial, family = "binomial")
-  fit$alpha
+  fit <- estglmMult(data = data_binomial, family = "binomial")
   fit$beta
-  fit$gamma
-  fit$std
 
   data(simulatedData_poisson)
-  fit <- estglmBootSep(data = data_poisson, family = "poisson")
+  fit <- estglmMult(data = data_poisson, family = "poisson")
   fit$alpha
   fit$beta
-  fit$gamma
-  fit$std
 }

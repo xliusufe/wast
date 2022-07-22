@@ -1,17 +1,15 @@
-\name{estglmBootGamma}
-\alias{estglmBootGamma}
+\name{estglmBootMult}
+\alias{estglmBootMult}
 \title{
-  Estimating standard deviation of grouping parameter \eqn{\boldsymbol{\gamma}} by bootstrap method in Generalized Linear Models with subgroups
+  Estimating standard deviation of parameters by bootstrap method in Generalized Linear Models with multiple change-planes
 }
 \description{
-  Provide estimators of standard deviation of coefficient \eqn{\boldsymbol{\gamma}} by bootstrap method in generalized linear models with subgroups. More specifically, given estimator \eqn{(\hat{\boldsymbol{\alpha}}^T,\hat{\boldsymbol{\beta}}^T)^T}, 
-  we get MLE \eqn{\hat{\boldsymbol{\gamma}}^*} based on bootstrap samples.
+  Provide estimators of standard deviation of coefficients by bootstrap method in generalized linear models with multiple change-planes.
 }
 
 \usage{
-  estglmBootGamma(data, family = "gaussian", h = NULL, smooth = "sigmoid",
-              weights = "exponential", alpha = NULL, beta = NULL, gamma = NULL,
-              gamma0 = NULL, B = 1000, maxIter = 100, tol = 0.0001)
+  estglmBootMult(data, family = "gaussian", ng = 2, h = NULL, smooth = "sigmoid",
+                    weights = "exponential", B = 1000, maxIter = 100, tol = 0.0001)
 }
 
 \arguments{
@@ -19,23 +17,13 @@
 
   \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
 
-  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}}
+  \item{ng}{An integer, which is the number of change-planes. Default is \code{ng = 2}.}
+
+  \item{h}{A numeric number, which is the bandwidth in the smooth function. Default is \code{h = log(n)/sqrt(n)}.}
 
   \item{smooth}{The smooth function. Either "sigmoid" (the default), "pnorm", or "mixnorm", see details below.}
 
   \item{weights}{The weights. Either "exponential" (the default), "norm", or "bernoulli", see details below.}
-
-  \item{alpha}{The value of parameter \eqn{\boldsymbol{\alpha}}, which may be a estimator of \eqn{\boldsymbol{\alpha}}. 
-      Default is \code{alpha = NULL}, in which case the MLE \eqn{\hat{\boldsymbol{\alpha}}} is used.}
-
-  \item{beta}{The value of parameter \eqn{\boldsymbol{\beta}}, which may be a estimator of \eqn{\boldsymbol{\beta}}. 
-      Default is \code{beta = NULL}, in which case the MLE \eqn{\hat{\boldsymbol{\beta}}} is used.}
-
-  \item{gamma}{The value of parameter \eqn{\boldsymbol{\gamma}}, which may be a estimator of \eqn{\boldsymbol{\gamma}}. 
-      Default is \code{gamma = NULL}, in which case the MLE \eqn{\hat{\boldsymbol{\gamma}}} is used.}
-
-  \item{gamma0}{An initial value of parameter \eqn{\boldsymbol{\gamma}} when estimate the parameter \eqn{\boldsymbol{\gamma}}
-      based on bootstrap sample. Default is \code{gamma0 = NULL}, in which case the initial value \code{gamma0 = rep(1, r-1)} is used}
 
   \item{B}{An integer, the number of bootstrap samples. Default is \code{B = 1000}.}
 
@@ -45,12 +33,13 @@
 }
 
 \value{
-  \item{alpha}{Estimator of the baseline parameter \eqn{\boldsymbol{\alpha}} if \code{alpha = NULL}.}
-  \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}} if \code{beta = NULL}.}
-  \item{gamma}{Estimator of the grouping parameter \eqn{\boldsymbol{\gamma}} if \code{gamma = NULL}.}
+  \item{alpha}{Estimator of the baseline parameter \eqn{\boldsymbol{\alpha}}.}
+  \item{beta}{Estimator of the grouping difference parameter \eqn{\boldsymbol{\beta}}.}
+  \item{gamma}{Estimator of the grouping parameter \eqn{\boldsymbol{\gamma}}.}
   \item{delta}{A vector with length \eqn{n}. Estimator of the indicator function \eqn{I(\boldsymbol{U}^T\boldsymbol{\gamma}\geq 0)}.}
-  \item{std}{A vector with length \eqn{p+q+r-1}. The standard deviation (\code{sd}) of parameter \eqn{(\boldsymbol{\alpha}^T, \boldsymbol{\beta}^T,\boldsymbol{\gamma}_{-1}^T)^T}, 
-  where \eqn{\boldsymbol{\gamma}_{-1}=(\gamma_2,\cdots,\gamma_r)^T}.}
+  \item{ha}{Estimator of the threshholds \eqn{\{a_1, \cdots, a_S\}}, where \eqn{S} equals to \code{ng}.}
+  \item{std}{A vector with length \eqn{p+S*q+r-1}. The standard deviation (\code{sd}) of parameter \eqn{(\boldsymbol{\alpha}^T, \boldsymbol{\beta}^T,\boldsymbol{\gamma}_{-1}^T, a_1,\cdots,a_S)^T}, 
+  where \eqn{S} is the number of change-planes, and \eqn{\boldsymbol{\gamma}_{-1}=(\gamma_2,\cdots,\gamma_r)^T}.}
 }
 
 \details{
@@ -60,8 +49,9 @@
   }
   where
   \deqn{
-  \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
+  \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\sum_{s=1}^{S}\boldsymbol{\beta}_s{\boldsymbol 1}(U_i+\boldsymbol{U}_{2i}^T\boldsymbol{\gamma}_{-1}\geq a_s),
   }
+  with the identifiable restraint that \eqn{a_1< a_2<\cdots< a_S}.
 
   The smooth functioms:
   \itemize{
@@ -113,21 +103,21 @@ Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
 
 \examples{
   data(simulatedData_gaussian)
-  fit <- estglmBootGamma(data = data_gaussian, family = "gaussian")
+  fit <- estglmBootMult(data = data_gaussian, family = "gaussian")
   fit$alpha
   fit$beta
   fit$gamma
   fit$std
 
   data(simulatedData_binomial)
-  fit <- estglmBootGamma(data = data_binomial, family = "binomial")
+  fit <- estglmBootMult(data = data_binomial, family = "binomial")
   fit$alpha
   fit$beta
   fit$gamma
   fit$std
 
   data(simulatedData_poisson)
-  fit <- estglmBootGamma(data = data_poisson, family = "poisson")
+  fit <- estglmBootMult(data = data_poisson, family = "poisson")
   fit$alpha
   fit$beta
   fit$gamma
