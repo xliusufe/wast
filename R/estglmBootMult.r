@@ -96,7 +96,7 @@ estglmBootMult <- function(data, family = "gaussian", ng = 2, h = NULL, smooth =
 
 	halphaB	= matrix(0, nrow = p1, ncol = B)
 	hbetaB	= matrix(0, nrow = ng*p2, ncol = B)
-	hthetaB	= matrix(0, nrow = p3, ncol = B)
+	hthetaB	= matrix(0, nrow = p3-1, ncol = B)
 	haB		= matrix(0, nrow = ng, ncol = B)
 
 	for(b in 1:B){
@@ -149,7 +149,7 @@ estglmBootMult <- function(data, family = "gaussian", ng = 2, h = NULL, smooth =
 		for(k in 1:ng){
 			hbetaB[((k-1)*p2+1):(k*p2),b] = tbeta[(p1+(k-1)*p2+1):(p1+k*p2)]*scal_x
 		}
-		hthetaB[, b]	= c(1,fit$theta)
+		hthetaB[, b]	= fit$theta
 		haB[, b]		= fit$ha
 	}
 	hsigma2 = sqrt(n)*apply(rbind(halphaB, hbetaB, hthetaB, haB), 1, sd)
