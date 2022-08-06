@@ -1890,9 +1890,9 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -1919,7 +1919,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			w[(j+p1)*n+i] = x[j*n+i]*tmp;
 		}
 	}
-	// printArrayDouble1(w, n, 5, p);
 
 
 	while(step < maxstep){
@@ -1951,8 +1950,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			}
 		}
 
-		// printArrayDouble(beta0, p, p);
-
 		ologelr = 0.0;
 		for(j=0;j<p3;j++) zy[j] = 0.0;
 		for(i=0;i<n;i++){
@@ -1969,8 +1966,8 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 			yk -= tmp*sh[i];
 
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*wk*yk;
-				wz[j*n+i] = z[j*n+i]*wk;
+				zy[j] 	+= z[n+j*n+i]*wk*yk;
+				wz[j*n+i] = z[n+j*n+i]*wk;
 			}
 			ologelr += yk*yk;
 		}
@@ -1984,8 +1981,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				hessz[j*p3+k] = tmp;
 			}
 		}
-		// printArrayDouble1(hessz, p3, p3, p3);
-		// printArrayDouble(zy, p3, p3);
 
 		if(p3<2){
 			if(hessz[0]<MEPS){
@@ -2004,8 +1999,6 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 				AbyB(theta, hessz, zy, p3, p3, 1);
 			}
 		}
-		// printArrayDouble(theta, p3, p3);
-		// printArrayDouble1(hessz, p3, p3, p3);
 
 		for(j=0; j < p3; j++){
 			theta[j] += theta0[j];
@@ -2013,9 +2006,9 @@ void _EstLinearCP(double *beta0, double *theta0, double *tx, double *x, double *
 
 		for(j=p1;j<p;j++) xy[j] = 0.0;
 		for(i=0;i<n;i++){
-			tmp = 1.0;
+			tmp = z[i];
 			for(j=0;j<p3;j++){
-				tmp	+= z[j*n+i]*theta[j];
+				tmp	+= z[n+j*n+i]*theta[j];
 			}
 
 			if(smooth==1){
@@ -2099,9 +2092,9 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2127,8 +2120,6 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 		}
 	}
 
-	// printf("p3 = %d\n",p3);
-
 	while (step < maxstep){
 		step++;
 
@@ -2149,8 +2140,8 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			yk 	= y[i] - wk;
 			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*tmp*yk;
-				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk*(1.0-wk);
+				zy[j] 	+= z[n+j*n+i]*tmp*yk;
+				wz[j*n+i] = z[n+j*n+i]*tmp*tmp*wk*(1.0-wk);
 			}
 		}
 
@@ -2158,12 +2149,11 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			for(k=0; k < p3; k++){
 				tmp = 0.0;
 				for(i=0; i<n; i++){
-					tmp += z[j*n+i]*wz[k*n+i];
+					tmp += z[n+j*n+i]*wz[k*n+i];
 				}
 				hessz[j*p3+k] = tmp;
 			}
 		}
-		// printArrayDouble1(hessz, p3, p3, p3);
 
 		if(p3<2){
 			if(hessz[0]<MEPS){
@@ -2182,17 +2172,15 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 				AbyB(theta, hessz, zy, p3, p3, 1);
 			}
 		}
-		// printArrayDouble(theta, p3, p3);
-		// printArrayDouble1(hessz, p3, p3, p3);
 
 		for(j=0; j < p3; j++){
 			theta[j] += theta0[j];
 		}
 
 		for(i=0;i<n;i++){
-			tmp = 1.0;
+			tmp = z[i];
 			for(j=0;j<p3;j++){
-				tmp	+= z[j*n+i]*theta[j];
+				tmp	+= z[n+j*n+i]*theta[j];
 			}
 			if(smooth==1){
 				tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2228,7 +2216,6 @@ void _EstLogisticCP(double *beta0, double *theta0, double *tx, double *x, double
 			nlogelr += y[i]*tmp - log(1+expx);
 		}
 		nlogelr = -2*nlogelr;
-		// printf("nlogelr = %f, ologelr = %f\n", nlogelr, ologelr);
 		if((nlogelr<ologelr) && (1 - nlogelr/ologelr > eps)){
 			ologelr = nlogelr;
 			for(j=0;j<p3;j++){
@@ -2275,9 +2262,9 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2322,8 +2309,8 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 			yk 	= y[i] - wk;
 			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*tmp*yk;
-				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk;
+				zy[j] 	+= z[n+j*n+i]*tmp*yk;
+				wz[j*n+i] = z[n+j*n+i]*tmp*tmp*wk;
 			}
 		}
 
@@ -2331,7 +2318,7 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 			for(k=0; k < p3; k++){
 				tmp = 0.0;
 				for(i=0; i<n; i++){
-					tmp += z[j*n+i]*wz[k*n+i];
+					tmp += z[n+j*n+i]*wz[k*n+i];
 				}
 				hessz[j*p3+k] = tmp;
 			}
@@ -2360,9 +2347,9 @@ void _EstPoissCP(double *beta0, double *theta0, double *tx, double *x, double *z
 		}
 
 		for(i=0;i<n;i++){
-			tmp = 1.0;
+			tmp = z[i];
 			for(j=0;j<p3;j++){
-				tmp	+= z[j*n+i]*theta[j];
+				tmp	+= z[n+j*n+i]*theta[j];
 			}
 			if(smooth==1){
 				tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2706,9 +2693,9 @@ void _EstLinearCP_Boot(double *beta0, double *theta0, double *tx, double *x, dou
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2781,8 +2768,8 @@ void _EstLinearCP_Boot(double *beta0, double *theta0, double *tx, double *x, dou
 			yk -= tmp*sh[i];
 
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*wk*yk*g[i];
-				wz[j*n+i] = z[j*n+i]*wk;
+				zy[j] 	+= z[n+j*n+i]*wk*yk*g[i];
+				wz[j*n+i] = z[n+j*n+i]*wk;
 			}
 			ologelr += yk*yk*g[i];
 		}
@@ -2822,9 +2809,9 @@ void _EstLinearCP_Boot(double *beta0, double *theta0, double *tx, double *x, dou
 		nlogelr = 0.0;
 		for(j=p1;j<p;j++) xy[j] = 0.0;
 		for(i=0;i<n;i++){
-			yk = 1.0;
+			yk = z[i];
 			for(j=0;j<p3;j++){
-				yk	+= z[j*n+i]*theta[j];
+				yk	+= z[n+j*n+i]*theta[j];
 			}
 
 			if(smooth==1){
@@ -2904,9 +2891,9 @@ void _EstLogisticCP_Boot(double *beta0, double *theta0, double *tx, double *x, d
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -2953,8 +2940,8 @@ void _EstLogisticCP_Boot(double *beta0, double *theta0, double *tx, double *x, d
 			yk 	*= g[i];
 			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*tmp*yk;
-				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk*(1.0-wk)*g[i];
+				zy[j] 	+= z[n+j*n+i]*tmp*yk;
+				wz[j*n+i] = z[n+j*n+i]*tmp*tmp*wk*(1.0-wk)*g[i];
 			}
 		}
 
@@ -2962,7 +2949,7 @@ void _EstLogisticCP_Boot(double *beta0, double *theta0, double *tx, double *x, d
 			for(k=0; k < p3; k++){
 				tmp = 0.0;
 				for(i=0; i<n; i++){
-					tmp += z[j*n+i]*wz[k*n+i];
+					tmp += z[n+j*n+i]*wz[k*n+i];
 				}
 				hessz[j*p3+k] = tmp;
 			}
@@ -2991,9 +2978,9 @@ void _EstLogisticCP_Boot(double *beta0, double *theta0, double *tx, double *x, d
 		}
 
 		for(i=0;i<n;i++){
-			tmp = 1.0;
+			tmp = z[i];
 			for(j=0;j<p3;j++){
-				tmp	+= z[j*n+i]*theta[j];
+				tmp	+= z[n+j*n+i]*theta[j];
 			}
 			if(smooth==1){
 				tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -3075,9 +3062,9 @@ void _EstPoissCP_Boot(double *beta0, double *theta0, double *tx, double *x, doub
 	}
 
 	for(i=0;i<n;i++){
-		tmp = 1.0;
+		tmp = z[i];
 		for(j=0;j<p3;j++){
-			tmp	+= z[j*n+i]*theta0[j];
+			tmp	+= z[n+j*n+i]*theta0[j];
 		}
 		if(smooth==1){
 			tmp 	= 1.0/(1.0+exp(-tmp*h));
@@ -3124,8 +3111,8 @@ void _EstPoissCP_Boot(double *beta0, double *theta0, double *tx, double *x, doub
 			wk 	*= g[i];
 			tmp = tmp*dsh[i];
 			for(j=0;j<p3;j++){
-				zy[j] 	+= z[j*n+i]*tmp*yk;
-				wz[j*n+i] = z[j*n+i]*tmp*tmp*wk;
+				zy[j] 	+= z[n+j*n+i]*tmp*yk;
+				wz[j*n+i] = z[n+j*n+i]*tmp*tmp*wk;
 			}
 		}
 
@@ -3133,7 +3120,7 @@ void _EstPoissCP_Boot(double *beta0, double *theta0, double *tx, double *x, doub
 			for(k=0; k < p3; k++){
 				tmp = 0.0;
 				for(i=0; i<n; i++){
-					tmp += z[j*n+i]*wz[k*n+i];
+					tmp += z[n+j*n+i]*wz[k*n+i];
 				}
 				hessz[j*p3+k] = tmp;
 			}
@@ -3162,9 +3149,9 @@ void _EstPoissCP_Boot(double *beta0, double *theta0, double *tx, double *x, doub
 		}
 
 		for(i=0;i<n;i++){
-			tmp = 1.0;
+			tmp = z[i];
 			for(j=0;j<p3;j++){
-				tmp	+= z[j*n+i]*theta[j];
+				tmp	+= z[n+j*n+i]*theta[j];
 			}
 			if(smooth==1){
 				tmp 	= 1.0/(1.0+exp(-tmp*h));

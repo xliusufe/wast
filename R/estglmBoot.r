@@ -15,8 +15,8 @@ estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
 	n 	= length(y)
 	tx 	= data$X
 	x 	= data$Z
-	z 	= data$U[,-1]
-	p1 	= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
+	z 	= data$U
+	p1 	= ifelse(is.null(ncol(tx)), 1, ncol(tx))
 	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
 	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
 	h 	= ifelse(is.null(h), sqrt(n)/log(n), 1/h)
@@ -32,7 +32,7 @@ estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
 					'mixnorm'	= 3
 				)
 
-	dims 	= c(n, p1, p2, p3, maxIter, type)
+	dims 	= c(n, p1, p2, p3-1, maxIter, type)
 	params 	= c(tol, h)
 	if(family=='gaussian'){
 		fitglm 	= .Call("_EST_LINEAR",
@@ -68,17 +68,16 @@ estglmBoot <- function(data, family = "gaussian", h = NULL, smooth = "sigmoid", 
 		stop("Family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
 
-	htheta 	= fitglm$theta
+	htheta 	= c(1, fitglm$theta)
 	tbeta 	= fitglm$beta
 	halpha 	= tbeta[1:p1]*scal_tx
 	hbeta 	= tbeta[-c(1:p1)]*scal_x
-	hdelta 	= (1+z%*%htheta>0)
-	htheta 	= c(1, htheta)
+	hdelta 	= z%*%htheta>0
 
 
 	halphaB	= matrix(0, nrow = p1, ncol = B)
 	hbetaB	= matrix(0, nrow = p2, ncol = B)
-	hthetaB	= matrix(0, nrow = p3, ncol = B)
+	hthetaB	= matrix(0, nrow = p3-1, ncol = B)
 
 	for(b in 1:B){
 		G = switch(weights,
