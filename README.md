@@ -1,5 +1,5 @@
 # wast
-R package "wastee" for calculating p-value of the test statistic for subgroup detecting in the framework of general estimating equation (EE). In the paper Liu (2022), we propose a novel U-like statistic by taking the weighted average over the nuisance parametric space. The proposed test statistics not only improve power, but also save dramatically computational time. Many common and useful models are considered, including models with change point or change plane. We propose a novel U-like test statistic to detect multiple change planes in the framework of EE.
+R package "wast" for calculating p-value of the test statistic for subgroup detecting in the framework of general estimating equation (EE). In the paper Liu (2022), we propose a novel test statistic by taking the weighted average of the squared score test statistic (WAST) over the nuisance parametric space. The proposed test statistics not only improve power, but also save dramatically computational time. Many common and useful models are considered, including models with change point or change plane. We propose a novel U-like test statistic to detect multiple change planes in the framework of EE.
 
 # Installation
 
