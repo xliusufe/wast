@@ -27,7 +27,7 @@ License: \tab GPL (>= 2)\cr
     Huang, Y., Cho, J., and Fong, Y. (2021). Threshold-based subgroup testing in logistic regression
     models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 291-311.
 
-    Liu, X. (2022). Subgroup testing in generalized linear models. Manuscript.
+    Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
 }
 
 \keyword{ package }

@@ -1,18 +1,30 @@
 exams <- function(family = "gaussian", method = "wast", M = 1000, K = 1000){
 	if(family == "gaussian"){
 		data(simulatedData_gaussian)
-		pvals   = pval(data = data_gaussian, family = family, method = method, M=M, K = K)
+		pvals   = pvalglm(data = data_gaussian, family = family, method = method, M=M, K = K)
 	}
 	else if(family == "binomial"){
 		data(simulatedData_binomial)
-		pvals   = pval(data = data_binomial, family = family, method = method, M=M, K = K)
+		pvals   = pvalglm(data = data_binomial, family = family, method = method, M=M, K = K)
 	}
 	else if(family == "poisson"){
 		data(simulatedData_poisson)
-		pvals   = pval(data = data_poisson, family = family, method = method, M=M, K = K)
+		pvals   = pvalglm(data = data_poisson, family = family, method = method, M=M, K = K)
+	}
+	else if(family == "probit"){
+		data(simulatedData_probit)
+		pvals   = pval_probit(data = data_probit, method = method, M=M, K = K)
+	}
+	else if(family == "quantile"){
+		data(simulatedData_quantile)
+		pvals   = pval_quantile(data = data_quantile, method = method, tau = tau, M=M, K = K)
+	}
+	else if(family == "semiparam"){
+		data(simulatedData_semiparam)
+		pvals   = pval_semiparam(data = data_semiparam, method = method, M=M, K = K)
 	}
 	else{
-		stop("Family must be one of {'gaussian', 'binomial', 'poisson', 'gamma'} !")
+		stop("Family must be one of {GLM with Gaussian family ('gaussian'), GLM with binomial family ('binomial'), GLM with Poisson family ('poisson'), Quantile regression ('quantile'), Probit regression ('probit'), and Semiparamtric models ('semiparam')} !")
 	}
 
 	return(pvals)

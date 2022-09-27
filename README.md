@@ -1,5 +1,5 @@
 # wast
-R package "wast" for calculating p-value of the test statistic for subgroup detecting in generalized linear models, as well as estimating the coefficients. In the paper Liu (2022), we consider hypothesis test of coefficients in the generalized linear models (GLM) to detect the existence of the subgroups, which can serve as the optimal individualized treatment recommendation in practice. Test we consider in this paper is one of the class of test problems when a part of parameters is not identifiable under the null. We propose a novel U-like statistic by taking the weighted average over the grouping parameter's space. The proposed test statistic not only improves significantly the power but also is computationally efficient.
+R package "wastee" for calculating p-value of the test statistic for subgroup detecting in the framework of general estimating equation (EE). In the paper Liu (2022), we propose a novel U-like statistic by taking the weighted average over the nuisance parametric space. The proposed test statistics not only improve power, but also save dramatically computational time. Many common and useful models are considered, including models with change point or change plane. We propose a novel U-like test statistic to detect multiple change planes in the framework of EE.
 
 # Installation
 
@@ -16,17 +16,27 @@ R package "wast" for calculating p-value of the test statistic for subgroup dete
     ## Testing
 
     data(simulatedData_gaussian)
-    pvals <- pval(data = data_gaussian, family = "gaussian")
+    pvals <- pvalglm(data = data_gaussian, family = "gaussian")
     pvals
 
     data(simulatedData_binomial)
-    pvals <- pval(data = data_binomial, family = "binomial")
+    pvals <- pvalglm(data = data_binomial, family = "binomial")
     pvals
 
     data(simulatedData_poisson)
-    pvals <- pval(data = data_poisson, family = "poisson")
+    pvals <- pvalglm(data = data_poisson, family = "poisson")
     pvals
 
+    data(simulatedData_quantile)
+    pvals <- pval_quantile(data = data_quantile, tau = 0.5, method = "wast")
+    pvals
+
+    pvals <- pval_quantile(data = data_quantile, tau = 0.3, method = "wast")
+    pvals
+
+    data(simulatedData_probit)
+    pvals <- pval_probit(data = data_probit, method = "wast")
+    pvals
 
 
     ## Estimation
@@ -60,7 +70,7 @@ size calculation. Journal of the American Statistical Association, 112(518):769-
 Huang, Y., Cho, J., and Fong, Y. (2021). Threshold-based subgroup testing in logistic regression
 models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 70(2):291-311.
 
-Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
+Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
 
 # Development
 This R package is developed by Xu Liu (liu.xu@sufe.edu.cn).

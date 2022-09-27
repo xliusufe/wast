@@ -1,5 +1,5 @@
-\name{pval}
-\alias{pval}
+\name{pvalglm}
+\alias{pvalglm}
 \title{
   P-value for Subgroup Test in Generalized Linear Models
 }
@@ -8,7 +8,7 @@
 }
 
 \usage{
-  pval(data, family = "gaussian", method = 'wast', M=1000, K = 2000)
+  pvalglm(data, family = "gaussian", method = 'wast', M=1000, K = 2000)
 }
 
 \arguments{
@@ -53,19 +53,19 @@ size calculation. Journal of the American Statistical Association, 112(518):769-
 Huang, Y., Cho, J., and Fong, Y. (2021). Threshold-based subgroup testing in logistic regression
 models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 291-311.
 
-Liu, X. (2022). Subgroup detecting in generalized linear models. Manuscript.
+Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
 }
 
 \examples{ 
   data(simulatedData_gaussian)
-  pvals <- pval(data = data_gaussian, family = "gaussian")
+  pvals <- pvalglm(data = data_gaussian, family = "gaussian")
   pvals
 
   data(simulatedData_binomial)
-  pvals <- pval(data = data_binomial, family = "binomial")
+  pvals <- pvalglm(data = data_binomial, family = "binomial")
   pvals
 
   data(simulatedData_poisson)
-  pvals <- pval(data = data_poisson, family = "poisson")
+  pvals <- pvalglm(data = data_poisson, family = "poisson")
   pvals
 }

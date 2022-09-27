@@ -2,4 +2,5 @@ importFrom("stats", "glm", "quantile", "residuals", "rnorm", "dnorm", "pnorm", "
 importFrom("utils", "data")
 useDynLib(wast)
 exportPattern("^[[:alpha:]]+")
-export(exams, pval, estglm, estglmBoot, estglmMult, estglmBootMult)
+export(exams, pvalglm, estglm, estglmBoot, estglmMult, estglmBootMult,
+        pval_probit, pval_quantile, pval_semiparam)
