@@ -4,30 +4,21 @@
   P-value for subgroup test in quantile regression models
 }
 \description{
-  Provide p-value for subgroup test in quantile regression models, including two methods 'wast' and 'sst'.
+  Provide p-value for subgroup test in quantile regression.
 }
 
 \usage{
-  pval_quantile(data, method = "wast", tau = 0.5, M = 1000, K = 2000,
-                              isBeta = FALSE, shape1 = 1, shape2 = 1)
+  pval_quantile(data, tau = 0.5, M = 1000, K = 2000)
 }
 
 \arguments{
   \item{data}{A list, including \eqn{Y} (response), \eqn{X} (baseline variable), \eqn{Z} (grouping difference variable), and \eqn{U} (grouping variable).}
 
-  \item{method}{There are two methods, including the proposed 'wast' and 'sst'.}
-
   \item{tau}{The given quantile \eqn{\tau}, a scale in the unit inteval. Default is \code{tau = 0.5}.}
 
   \item{M}{An integer, the number of bootstrap samples.}
 
-  \item{K}{An integer, the number of threshold values for 'sst'.}
-
-  \item{isBeta}{A bool value. The weight \eqn{w(\gamma)} is chosen to be Beta distribution if \code{isBeta=TRUE}, which can be used if the grouping difference variable is bounded in \eqn{[0,1]}. Default is \code{FALSE}.}
-
-  \item{shape1}{The first parameter of Best distribution if \code{isBeta = TRUE}.}
-
-  \item{shape2}{The second parameter of Best distribution if \code{isBeta = TRUE}.}
+  \item{K}{An integer, the number of threshold values.}
 }
 
 \value{

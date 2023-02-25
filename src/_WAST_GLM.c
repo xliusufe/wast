@@ -1356,6 +1356,16 @@ double GLM_single_wast(double *Tns, double *y, double *tx, double *x, double *z,
 			Tn0 	+= tmp*resid[i]*resid[j];
 		}
 	}
+	if(type==1){
+		tmp = 0.0;
+		for (i = 0; i < n; i++){
+			tmp += resid[i]*resid[i];
+		}
+		Tn0 *= 1.0*(n-p);
+		Tn0 /= tmp;
+	}
+
+
 	if(type==1){// Gaussian
 		EstLinearWAST10(tx, C11, n, p);
 	}
@@ -1387,6 +1397,16 @@ double GLM_single_wast(double *Tns, double *y, double *tx, double *x, double *z,
 		}
 
 		Tns[g] = 2.0*Tn/n;
+
+		if(type==1){
+			tmp = 0.0;
+			for (i = 0; i < n; i++){
+				tmp += resid[i]*resid[i];
+			}
+			Tns[g] *= 1.0*(n-p);
+			Tns[g] /= tmp;
+		}
+
 	}
 
 	free(yb);
@@ -1443,6 +1463,14 @@ double GLM_multiple_wast(double *Tns, double *y, double *tx, double *x, double *
 			Tn0 	+= tmp*resid[i]*resid[j];
 		}
 	}
+	if(type==1){
+		tmp = 0.0;
+		for (i = 0; i < n; i++){
+			tmp += resid[i]*resid[i];
+		}
+		Tn0 *= 1.0*(n-p);
+		Tn0 /= tmp;
+	}
 
 	if(type==1){// Gaussian
 		EstLinearWAST10(tx, C11, n, p);
@@ -1477,6 +1505,15 @@ double GLM_multiple_wast(double *Tns, double *y, double *tx, double *x, double *
 			}
 		}
 		Tns[g] = 2.0*Tn/n;
+
+		if(type==1){
+			tmp = 0.0;
+			for (i = 0; i < n; i++){
+				tmp += resid[i]*resid[i];
+			}
+			Tns[g] *= 1.0*(n-p);
+			Tns[g] /= tmp;
+		}
 	}
 
 	free(yb);
