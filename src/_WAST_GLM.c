@@ -1362,7 +1362,7 @@ double GLM_single_wast(double *Tns, double *y, double *tx, double *x, double *z,
 			tmp += resid[i]*resid[i];
 		}
 		Tn0 *= 1.0*(n-p);
-		Tn0 /= tmp;
+		Tn0 /= tmp*tmp;
 	}
 
 
@@ -1404,7 +1404,7 @@ double GLM_single_wast(double *Tns, double *y, double *tx, double *x, double *z,
 				tmp += resid[i]*resid[i];
 			}
 			Tns[g] *= 1.0*(n-p);
-			Tns[g] /= tmp;
+			Tns[g] /= tmp*tmp;
 		}
 
 	}
@@ -1469,7 +1469,7 @@ double GLM_multiple_wast(double *Tns, double *y, double *tx, double *x, double *
 			tmp += resid[i]*resid[i];
 		}
 		Tn0 *= 1.0*(n-p);
-		Tn0 /= tmp;
+		Tn0 /= tmp*tmp;
 	}
 
 	if(type==1){// Gaussian
@@ -1512,7 +1512,7 @@ double GLM_multiple_wast(double *Tns, double *y, double *tx, double *x, double *
 				tmp += resid[i]*resid[i];
 			}
 			Tns[g] *= 1.0*(n-p);
-			Tns[g] /= tmp;
+			Tns[g] /= tmp*tmp;
 		}
 	}
 
