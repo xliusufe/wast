@@ -203,7 +203,7 @@ EstTn_semiparam0 <- function(data, isBeta = 0, shape1 = 1, shape2 = 1, K=1000L, 
 	return(p_value)
 }
 
-EstTn_quantile1 <- function(data, tau = 0.5, isBeta = 0, K = 20000L, M=1000L) {
+EstTn_quantile1 <- function(data, tau = 0.5, K = 20000L, M=1000L) {
 	if(tau*(1-tau)<=0)	stop('tau is out of range!')
 	y 		= data$Y
 	n 		= length(y)
@@ -336,7 +336,176 @@ EstTn_quantile_slrt <- function(data, tau = 0.5, K = 20000L, M=1000L, h = NULL) 
 	return(pvals)
 }
 
-pval_probit <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1){
+EstTn_probit_approx <- function(data, isBeta = 0, shape1 = 1, shape2 = 1, M=1000L, N0 = 5000, MU0 = NULL, Z_K = NULL) {
+	y 	= data$Y
+	n 	= length(y)
+	tx 	= data$X
+	x 	= data$Z
+	z 	= data$U
+	p1 	= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
+	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
+	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
+
+	maxIter = 50
+	tol 	= 0.0001
+	dims 	= c(n, p1, p2, p3, M, isBeta, maxIter, N0)
+	params 	= c(shape1, shape2, tol)
+
+	fit <- .Call("_Est_probit",
+				as.integer(y),
+				as.numeric(tx),
+				as.integer(c(n,p1,maxIter)),
+				as.numeric(tol))
+	alphahat = fit$coef
+	mu 		= tx%*%alphahat
+	resids 	= fit$residuals
+
+	yb 		= matrix(0, n, M)
+	for(k in 1:M){
+		yb[,k] 	= rnorm(n)<mu
+	}
+	yb 		<- cbind(y, yb)
+	if(is.null(MU0)){
+		MU0 	= runif(p3) - 0.5
+	}
+	if(is.null(Z_K)){
+		Z_K		= rnorm(N0)
+	}
+	fit <- .Call("_Probit_APPROX",
+				as.integer(yb),
+				as.numeric(tx),
+				as.numeric(x),
+				as.numeric(z),
+				as.numeric(resids),
+				as.numeric(Z_K),
+				as.numeric(MU0),
+				as.integer(dims),
+				as.numeric(params))
+	teststat	= fit$Tn0
+	teststat_p	= fit$Tn
+
+	p_value   	= mean(teststat_p >= teststat)
+
+	return(p_value)
+}
+
+EstTn_semiparam_approx <- function(data, isBeta = 0, shape1 = 1, shape2 = 1, M=1000L, N0 = 5000, MU0 = NULL, Z_K = NULL) {
+	# a~tx1 for the logistic model, that is E[a|tx1] = pi(tx1)
+	# y~tx2 for linear model, that is, y = h(tx2) + eps
+	y 		= data$Y
+	a 		= data$A
+	n 		= length(y)
+	tx1		= data$X1
+	tx2		= data$X2
+	x 		= data$Z
+	z 		= data$U
+
+	p11		= ifelse(is.null(ncol(tx1)) , 1, ncol(tx1))
+	p12 	= ifelse(is.null(ncol(tx2)) , 1, ncol(tx2))
+	p2 		= ifelse(is.null(ncol(x)) , 1, ncol(x))
+	p3 		= ifelse(is.null(ncol(z)) , 1, ncol(z))
+
+	maxIter = 20
+	tol 	= 0.0001
+	params 	= c(shape1, shape2, tol)
+
+	fit1	= .Call("_EST_LINEAR_H0",
+					as.numeric(tx1),
+					as.numeric(y),
+					as.integer(n),
+					as.integer(p11))
+	alpha1 	= fit1$coef
+	muhat1 	= tx1%*%alpha1
+	resids1	= fit1$residuals
+
+	dims 	= c(n, p11, p12, p2, p3, M, isBeta, maxIter, N0)
+	yb = matrix(0, n, M)
+	for(k in 1:M){
+		yb[,k] 	= muhat1 + resids1*rnorm(n)
+	}
+	yb 		= cbind(y, yb)
+	if(is.null(MU0)){
+		MU0 	= runif(p3) - 0.5
+	}
+	if(is.null(Z_K)){
+		Z_K		= rnorm(N0)
+	}
+	fit <- .Call("_DoubleRobust_APPROX",
+				as.numeric(yb),
+				as.numeric(a),
+				as.numeric(tx1),
+				as.numeric(tx1),
+				as.numeric(x),
+				as.numeric(z),
+				as.numeric(resids1),
+				as.numeric(Z_K),
+				as.numeric(MU0),
+				as.integer(dims),
+				as.numeric(params))
+
+	teststat	= fit$Tn0
+	teststat_p	= fit$Tn
+	p_value   	= mean(teststat_p >= teststat)
+
+	return(p_value)
+}
+
+EstTn_quantile_approx <- function(data, tau = 0.5, isBeta = 0, shape1 = 1, shape2 = 1, M=1000L, N0 = 5000, MU0 = NULL, Z_K = NULL) {
+	if(tau*(1-tau)<=0)	stop('tau is out of range!')
+	y 		= data$Y
+	n 		= length(y)
+	tx 		= data$X
+	x 		= data$Z
+	z 		= data$U
+	p1 		= ifelse(is.null(ncol(tx)) , 1, ncol(tx))
+	p2 		= ifelse(is.null(ncol(x)) , 1, ncol(x))
+	p3 		= ifelse(is.null(ncol(z)) , 1, ncol(z))
+
+	maxIter = 100
+	tol 	= 0.00001
+	dims 	= c(n, p1, p2, p3, M, isBeta, maxIter, N0)
+	params 	= c(tau, shape1, shape2, tol)
+
+	fit <- .Call("_EST_QR",
+				as.numeric(y),
+				as.numeric(tx),
+				as.integer(c(n,p1,maxIter)),
+				as.numeric(c(tau, tol)))
+	alphahat = fit$coef
+	muhat 	= tx%*%alphahat
+	resids 	= fit$residuals
+
+	yb = matrix(0, n, M)
+	for(k in 1:M){
+		wb 	= sample(c(-2*tau,2*(1-tau)), size=n, prob=c(tau,1-tau), replace=T)
+		yb[,k] 	= muhat + abs(resids)*wb
+	}
+	yb 		<- cbind(y, yb)
+	if(is.null(MU0)){
+		MU0 	= runif(p3) - 0.5
+	}
+	if(is.null(Z_K)){
+		Z_K		= rnorm(N0)
+	}
+	fit <- .Call("_Quantile_APPROX",
+				as.numeric(yb),
+				as.numeric(tx),
+				as.numeric(x),
+				as.numeric(z),
+				as.numeric(resids),
+				as.numeric(Z_K),
+				as.numeric(MU0),
+				as.integer(dims),
+				as.numeric(params))
+
+	teststat	= fit$Tn0
+	teststat_p	= fit$Tn
+	p_value   	= mean(teststat_p >= teststat)
+
+	return(p_value)
+}
+
+pval_probit <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
@@ -346,13 +515,16 @@ pval_probit <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALS
 	else if(method=='wast'){
 	   pvals  	= EstTn_probit0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
 	}
+	else if(method=='wastapprox'){
+		pvals  	= EstTn_probit_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+	}
 	else{
-		stop("Method must be one of {'wast' and 'sst'} !")
+		stop("Method must be one of {'wast', 'wastapprox' and 'sst'} !")
 	}
 	return(pvals)
 }
 
-pval_semiparam <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1){
+pval_semiparam <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
@@ -362,27 +534,33 @@ pval_semiparam <- function(data, method = "wast", M = 1000, K = 2000, isBeta = F
 	else if(method=='wast'){
 	   pvals  	= EstTn_semiparam0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
 	}
+	else if(method=='wastapprox'){
+		pvals  	= EstTn_semiparam_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+	}
 	else{
-		stop("Method must be one of {'wast' and 'sst'} !")
+		stop("Method must be one of {'wast', 'wastapprox' and 'sst'} !")
 	}
 	return(pvals)
 }
 
-pval_quantile <- function(data, method = "wast", tau = 0.5, M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1){
+pval_quantile <- function(data, method = "wast", tau = 0.5, M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
 	if(method=='sst'){
-		pvals  	= EstTn_quantile1(data, tau = tau, isBeta = isBeta, K = K, M=M)
+		pvals  	= EstTn_quantile1(data, tau = tau, K = K, M=M)
 	}
 	else if(method=='wast'){
 	   pvals  	= EstTn_quantile0(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
 	}
+	else if(method=='wastapprox'){
+		pvals  	= EstTn_quantile_approx(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+	}
 	else if(method=='slrt'){
-	   pvals  	= EstTn_quantile_slrt(data, tau = tau, K = K, M = M, h = NULL)
+	   pvals  	= EstTn_quantile_slrt(data, tau = tau, K = K, M=M, h = NULL)
 	}
 	else{
-		stop("Method must be one of {'wast', 'sst' and slrt} !")
+		stop("Method must be one of {'wast', 'wastapprox', 'sst' and slrt} !")
 	}
 
 	return(pvals)

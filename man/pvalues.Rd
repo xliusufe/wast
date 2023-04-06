@@ -8,19 +8,32 @@
 }
 
 \usage{
-  pvalglm(data, family = "gaussian", method = 'wast', M=1000, K = 2000)
+  pvalglm(data, family = "gaussian", method = 'wast', M=1000, K = 2000,
+          isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL)
 }
 
 \arguments{
   \item{data}{A list, including \eqn{Y} (response), \eqn{X} (baseline variable), \eqn{Z} (grouping difference variable), and \eqn{U} (grouping variable).}
 
   \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
-  
-  \item{method}{There are there methods, including the proposed 'wast', 'sst', and 'slrt'.}
+
+  \item{method}{There are there methods, including the proposed 'wast', 'wastapprox', 'sst', and 'slrt'.}
 
   \item{M}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
+
+  \item{isBeta}{A bool value. The weight \eqn{w(\gamma)} is chosen to be Beta distribution if \code{isBeta=TRUE}, which can be used if the grouping difference variable is bounded in \eqn{[0,1]}. Default is \code{FALSE}.}
+
+  \item{shape1}{The first parameter of Best distribution if \code{isBeta = TRUE}.}
+
+  \item{shape2}{The second parameter of Best distribution if \code{isBeta = TRUE}.}
+
+  \item{N0}{An integer, the number of samples to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{N0 = 5000}. }
+
+  \item{MU}{A vector with same length as \eqn{\boldsymbol{U}}, which is the mean of weight to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{MU = NULL}, in which \code{MU = runif(p3) - 0.5}. }
+
+  \item{ZK}{A vector with length \code{N0}, which is normal sample to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{ZK = NULL}, in which \code{ZK	= rnorm(N0)}. }
 }
 
 \value{
@@ -37,7 +50,7 @@
   \mu_i = \boldsymbol{X}_i^T\boldsymbol{\alpha} + \boldsymbol{Z}_i^T\boldsymbol{\beta}{\boldsymbol 1}(\boldsymbol{U}_i^T\boldsymbol{\gamma}\geq 0).
   }
 
-The hypothesis test problem is 
+The hypothesis test problem is
 \deqn{
   H_0: \boldsymbol{\beta}=\boldsymbol{0}\quad versus\quad H_1: \boldsymbol{\beta}\neq \boldsymbol{0}.
 }

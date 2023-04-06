@@ -125,7 +125,7 @@ EstTn_slr <- function(data, family = "gaussian", K = 1000L, M=1000L, isApprox = 
 	return(pvals)
 }
 
-EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 = 1, M=1000L) {
+EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 1, shape2 = 1, M=1000L) {
 	y 	= data$Y
 	n 	= length(y)
 	tx 	= data$X
@@ -135,7 +135,7 @@ EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 
 	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
 	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
 
-	if(p3>1) isBeta = 0
+	#if(p3>1) isBeta = 0
 	maxIter = 50
 	tol 	= 0.00001
 	dims 	= c(n, p1, p2, p3, M, isBeta, maxIter)
@@ -196,12 +196,92 @@ EstTn_ast <- function(data, family = "gaussian", isBeta = 0, shape1 = 0, shape2 
 	return(pvals)
 }
 
-pvalglm <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000){
+EstTn_ast_approx <- function(data, family = "gaussian", isBeta = 0, shape1 = 1, shape2 = 1, M=1000L, N0 = 5000, MU0 = NULL, Z_K = NULL) {
+	y 	= data$Y
+	n 	= length(y)
+	tx 	= data$X
+	x 	= data$Z
+	z 	= data$U
+	p1 	= ifelse(is.null(ncol(tx)), 1, ncol(tx))
+	p2 	= ifelse(is.null(ncol(x)) , 1, ncol(x))
+	p3 	= ifelse(is.null(ncol(z)) , 1, ncol(z))
+
+	#if(p3>1) isBeta = 0
+	maxIter = 50
+	tol 	= 0.00001
+	dims 	= c(n, p1, p2, p3, M, isBeta, maxIter)
+	params 	= c(shape1, shape2, tol)
+
+	scal_x 	= 1/sqrt(colSums(x^2))
+	x 		= x*matrix(rep(scal_x,each=n), nrow=n, ncol=p2)
+	scal_tx	= 1/sqrt(colSums(tx^2))
+	tx		= tx*matrix(rep(scal_tx,each=n), nrow=n, ncol=p1)
+
+	fitglm 	= glm(y~tx-1, family = family)
+	resids 	= residuals(fitglm, type = "response")
+	alphahat= fitglm$coefficients
+
+	mu 		= tx%*%alphahat
+	if(family=='gaussian'){
+		type = 1
+		sig2 = sqrt(sum(resids^2)/(n-p1))
+	}
+	else if(family == 'binomial'){
+		type = 2
+		expx = 1/(1+exp(-mu))
+	}
+	else if(family == 'poisson'){
+		type = 3
+		expx = exp(mu)
+	}
+	else{
+		stop("family must be one of {'gaussian', 'binomial', 'poisson'} !")
+	}
+
+	yb = matrix(0, n, M)
+	for(k in 1:M){
+		if(family=='gaussian'){
+			yb[,k] 	= rnorm(n, mean = 0, sd = sig2) + mu
+		}
+		else if(family == 'binomial'){
+			yb[,k] 	= runif(n)<expx
+		}
+		else if(family == 'poisson'){
+			yb[,k] 	= rpois(n, expx)
+		}
+	}
+	if(is.null(MU0)){
+		MU0 	= runif(p3) - 0.5
+	}
+	if(is.null(Z_K)){
+		Z_K		= rnorm(N0)
+	}
+	dims 	= c(dims, type, 0, N0)
+	fitwast <- .Call("_GLM_WAST_APPROX",
+				as.numeric(yb),
+				as.numeric(tx),
+				as.numeric(x),
+				as.numeric(z),
+				as.numeric(resids),
+				as.numeric(Z_K),
+				as.numeric(MU0),
+				as.integer(dims),
+				as.numeric(params))
+
+	teststat 	= fitwast$Tn0
+	teststat_p 	= fitwast$Tns
+	pvals   	= mean(teststat_p > teststat)
+
+	return(pvals)
+}
+
+pvalglm <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(!(family %in% c('gaussian', 'binomial','poisson'))){
 		stop("family must be one of {'gaussian', 'binomial', 'poisson'} !")
 	}
+	isBeta = ifelse(isBeta, 1, 0)
 	if(method=='wast') {
-	   pvals  	= EstTn_ast(data, family = family, M=M)
+	   pvals  	= EstTn_ast(data, family = family, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M)
 	}
 	else if(method=='sst'){
 		pvals  	= EstTn_sst(data, family = family, K = K, M=M)
@@ -209,8 +289,11 @@ pvalglm <- function(data, family = "gaussian", method = "wast", M=1000, K = 2000
 	else if(method=='slrt'){
 		pvals  	= EstTn_slr(data, family = family, K = K, M=M)
 	}
+	else if(method=='wastapprox'){
+		pvals  	= EstTn_ast_approx(data, family = family, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+	}
 	else{
-		warning("Input method is not one of {'wast', 'sst', and 'slrt'}. The default method 'wast' is used!")
+		warning("Input method is not one of {'wast', 'wastapprox', 'sst', and 'slrt'}. The default method 'wast' is used!")
 		pvals  	= EstTn_ast(data, family = family, M=M)
 	}
 	return(pvals)

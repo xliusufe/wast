@@ -8,17 +8,32 @@
 }
 
 \usage{
-  pval_quantile(data, tau = 0.5, M = 1000, K = 2000)
+  pval_quantile(data, method = "wast", tau = 0.5, M = 1000, K = 2000,
+        isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL)
 }
 
 \arguments{
   \item{data}{A list, including \eqn{Y} (response), \eqn{X} (baseline variable), \eqn{Z} (grouping difference variable), and \eqn{U} (grouping variable).}
+
+  \item{method}{There are two methods, including the proposed 'wast', 'wastapprox' and 'sst'.}
 
   \item{tau}{The given quantile \eqn{\tau}, a scale in the unit inteval. Default is \code{tau = 0.5}.}
 
   \item{M}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values.}
+
+  \item{isBeta}{A bool value. The weight \eqn{w(\gamma)} is chosen to be Beta distribution if \code{isBeta=TRUE}, which can be used if the grouping difference variable is bounded in \eqn{[0,1]}. Default is \code{FALSE}.}
+
+  \item{shape1}{The first parameter of Best distribution if \code{isBeta = TRUE}.}
+
+  \item{shape2}{The second parameter of Best distribution if \code{isBeta = TRUE}.}
+
+  \item{N0}{An integer, the number of samples to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{N0 = 5000}. }
+
+  \item{MU}{A vector with same length as \eqn{\boldsymbol{U}}, which is the mean of weight to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{MU = NULL}, in which \code{MU = runif(p3) - 0.5}. }
+
+  \item{ZK}{A vector with length \code{N0}, which is normal sample to approximate \eqn{\omega_{ij}} for 'wastapprox'. Default is \code{ZK = NULL}, in which \code{ZK	= rnorm(N0)}. }
 }
 
 \value{

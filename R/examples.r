@@ -1,4 +1,4 @@
-exams <- function(family = "gaussian", method = "wast", M = 1000, K = 1000){
+exams <- function(family = "gaussian", method = "wast", tau = 0.5, M = 1000, K = 1000){
 	if(family == "gaussian"){
 		data(simulatedData_gaussian)
 		pvals   = pvalglm(data = data_gaussian, family = family, method = method, M=M, K = K)

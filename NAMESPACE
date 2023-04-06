@@ -1,4 +1,4 @@
-importFrom("stats", "glm", "quantile", "residuals", "rnorm", "dnorm", "pnorm", "rpois", "runif", "sd", "rbinom", "rexp")
+importFrom("stats", "glm", "quantile", "residuals", "rnorm", "dnorm", "pnorm", "rpois", "runif", "sd", "rbinom", "rexp", "family")
 importFrom("utils", "data")
 useDynLib(wast)
 exportPattern("^[[:alpha:]]+")

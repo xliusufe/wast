@@ -7,14 +7,16 @@
   Examples for Family 'Gaussian', 'binomial', and 'Poisson'.
 }
 
-\usage{exams(family = "gaussian", method = "wast", M = 1000, K = 1000)
+\usage{exams(family = "gaussian", method = "wast", tau = 0.5, M = 1000, K = 1000)
 }
 
 \arguments{
-  \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', and 'poisson'.}
-  
+  \item{family}{Family for generalized linear models, including 'gaussian', 'binomial', 'poisson', 'probit', 'quantile', and 'semiparam'.}
+
   \item{method}{There are there methods, including the proposed 'wast', 'sst', and 'slrt'.}
-  
+
+  \item{tau}{The given quantile \eqn{\tau} when family is 'quantile', a scale in the unit inteval. Default is \code{tau = 0.5}.}
+
   \item{M}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
@@ -38,7 +40,7 @@ models in two phase sampling designs. Journal of the Royal Statistical Society: 
 Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
 }
 
-\examples{ 
+\examples{
   pvals <- exams(family = "gaussian", method = "wast")
   pvals
 
@@ -46,5 +48,8 @@ Liu, X. (2022). Change-plane testing in the generalized estimating equations. Ma
   pvals
 
   pvals <- exams(family = "poisson", method = "wast")
+  pvals
+
+  pvals <- exams(family = "quantile", method = "wast", tau = 0.5)
   pvals
 }

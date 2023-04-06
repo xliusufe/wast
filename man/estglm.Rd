@@ -8,7 +8,8 @@
 }
 
 \usage{
-  estglm(data, family = "gaussian", h = NULL, smooth = "sigmoid", maxIter = 100, tol = 0.0001)
+  estglm(data, family = "gaussian", h = NULL,
+                smooth = "sigmoid", maxIter = 100, tol = 0.0001)
 }
 
 \arguments{
