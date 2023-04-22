@@ -8,7 +8,7 @@
 }
 
 \usage{
-  pval_semiparam(data, method = "wast", M = 1000, K = 2000,
+  pval_semiparam(data, method = "wast", B = 1000, K = 2000,
         isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL)
 }
 
@@ -17,7 +17,7 @@
 
   \item{method}{There are two methods, including the proposed 'wast', 'wastapprox' and 'sst'.}
 
-  \item{M}{An integer, the number of bootstrap samples.}
+  \item{B}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values for 'sst'.}
 

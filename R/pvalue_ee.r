@@ -505,18 +505,18 @@ EstTn_quantile_approx <- function(data, tau = 0.5, isBeta = 0, shape1 = 1, shape
 	return(p_value)
 }
 
-pval_probit <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
+pval_probit <- function(data, method = "wast", B = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
 	if(method=='sst'){
-		pvals  	= EstTn_probit1(data, isBeta = isBeta, K = K, M=M)
+		pvals  	= EstTn_probit1(data, isBeta = isBeta, K = K, M = B)
 	}
 	else if(method=='wast'){
-	   pvals  	= EstTn_probit0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
+	   pvals  	= EstTn_probit0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M = B)
 	}
 	else if(method=='wastapprox'){
-		pvals  	= EstTn_probit_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+		pvals  	= EstTn_probit_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M = B, N0 = N0, MU0 = MU, Z_K = ZK)
 	}
 	else{
 		stop("Method must be one of {'wast', 'wastapprox' and 'sst'} !")
@@ -524,18 +524,18 @@ pval_probit <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALS
 	return(pvals)
 }
 
-pval_semiparam <- function(data, method = "wast", M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
+pval_semiparam <- function(data, method = "wast", B = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
 	if(method=='sst'){
-		pvals  	= EstTn_semiparam1(data, K = K, M=M)
+		pvals  	= EstTn_semiparam1(data, K = K, M = B)
 	}
 	else if(method=='wast'){
-	   pvals  	= EstTn_semiparam0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
+	   pvals  	= EstTn_semiparam0(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M = B)
 	}
 	else if(method=='wastapprox'){
-		pvals  	= EstTn_semiparam_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+		pvals  	= EstTn_semiparam_approx(data, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M = B, N0 = N0, MU0 = MU, Z_K = ZK)
 	}
 	else{
 		stop("Method must be one of {'wast', 'wastapprox' and 'sst'} !")
@@ -543,21 +543,21 @@ pval_semiparam <- function(data, method = "wast", M = 1000, K = 2000, isBeta = F
 	return(pvals)
 }
 
-pval_quantile <- function(data, method = "wast", tau = 0.5, M = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
+pval_quantile <- function(data, method = "wast", tau = 0.5, B = 1000, K = 2000, isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL){
 	if(shape1<0 || shape2<0)
 		stop("Two parameters of Beta distribution must not be negative!")
 	isBeta = ifelse(isBeta, 1, 0)
 	if(method=='sst'){
-		pvals  	= EstTn_quantile1(data, tau = tau, K = K, M=M)
+		pvals  	= EstTn_quantile1(data, tau = tau, K = K, M = B)
 	}
 	else if(method=='wast'){
-	   pvals  	= EstTn_quantile0(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M=M)
+	   pvals  	= EstTn_quantile0(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, K = K, M = B)
 	}
 	else if(method=='wastapprox'){
-		pvals  	= EstTn_quantile_approx(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M=M, N0 = N0, MU0 = MU, Z_K = ZK)
+		pvals  	= EstTn_quantile_approx(data, tau = tau, isBeta = isBeta, shape1 = shape1, shape2 = shape2, M = B, N0 = N0, MU0 = MU, Z_K = ZK)
 	}
 	else if(method=='slrt'){
-	   pvals  	= EstTn_quantile_slrt(data, tau = tau, K = K, M=M, h = NULL)
+	   pvals  	= EstTn_quantile_slrt(data, tau = tau, K = K, M = B, h = NULL)
 	}
 	else{
 		stop("Method must be one of {'wast', 'wastapprox', 'sst' and slrt} !")

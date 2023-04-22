@@ -8,7 +8,7 @@
 }
 
 \usage{
-  pvalglm(data, family = "gaussian", method = 'wast', M=1000, K = 2000,
+  pvalglm(data, family = "gaussian", method = 'wast', B = 1000, K = 2000,
           isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL)
 }
 
@@ -19,7 +19,7 @@
 
   \item{method}{There are there methods, including the proposed 'wast', 'wastapprox', 'sst', and 'slrt'.}
 
-  \item{M}{An integer, the number of bootstrap samples.}
+  \item{B}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
 

@@ -5,13 +5,13 @@
 Simulated data from generalized linear models
 }
 \description{
-Simulated data from the framework of general estimating equations, including model 
+Simulated data from the framework of general estimating equations, including model
 \itemize{
-\item 'Quantile regression' (\code{simulatedData_quantile}), 
-\item 'Probit regression' (\code{simulatedData_probit}), 
+\item 'Quantile regression' (\code{simulatedData_quantile}),
+\item 'Probit regression' (\code{simulatedData_probit}),
 \item 'Semiparamtric models' (\code{simulatedData_semiparam}),
 \item Simulated data from generalized linear models, including family 'gaussian' (\code{simulatedData_gaussian}), 
-'binomial' (\code{simulatedData_binomial}), and 'poisson' (\code{simulatedData_poisson}). 
+'binomial' (\code{simulatedData_binomial}), and 'poisson' (\code{simulatedData_poisson}).
 }
 }
 \usage{
@@ -30,11 +30,11 @@ We simulated data generated from generalized linear models
 \itemize{
 \item Y: the response, an \eqn{n}-vector
 
-\item X: the baseline variable with dimension \eqn{n\times p} 
+\item X: the baseline variable with dimension \eqn{n\times p}
 
-\item Z: the grouping difference variable with dimension \eqn{n\times q} 
+\item Z: the grouping difference variable with dimension \eqn{n\times q}
 
-\item U: the grouping variable with dimension \eqn{n\times r} 
+\item U: the grouping variable with dimension \eqn{n\times r}
 }
 
 }

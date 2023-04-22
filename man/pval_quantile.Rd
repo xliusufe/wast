@@ -8,7 +8,7 @@
 }
 
 \usage{
-  pval_quantile(data, method = "wast", tau = 0.5, M = 1000, K = 2000,
+  pval_quantile(data, method = "wast", tau = 0.5, B = 1000, K = 2000,
         isBeta = FALSE, shape1 = 1, shape2 = 1, N0 = 5000, MU = NULL, ZK = NULL)
 }
 
@@ -19,7 +19,7 @@
 
   \item{tau}{The given quantile \eqn{\tau}, a scale in the unit inteval. Default is \code{tau = 0.5}.}
 
-  \item{M}{An integer, the number of bootstrap samples.}
+  \item{B}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values.}
 

@@ -7,7 +7,7 @@
   Examples for Family 'Gaussian', 'binomial', and 'Poisson'.
 }
 
-\usage{exams(family = "gaussian", method = "wast", tau = 0.5, M = 1000, K = 1000)
+\usage{exams(family = "gaussian", method = "wast", tau = 0.5, B = 1000, K = 1000)
 }
 
 \arguments{
@@ -17,7 +17,7 @@
 
   \item{tau}{The given quantile \eqn{\tau} when family is 'quantile', a scale in the unit inteval. Default is \code{tau = 0.5}.}
 
-  \item{M}{An integer, the number of bootstrap samples.}
+  \item{B}{An integer, the number of bootstrap samples.}
 
   \item{K}{An integer, the number of threshold values for 'sst' and 'slrt'.}
 }

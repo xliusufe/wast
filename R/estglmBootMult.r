@@ -9,7 +9,7 @@ estglmBootMult <- function(data, family = "gaussian", ng = 2, h = NULL, smooth =
 	}
 	else if(ng==1){
 		warning("The number of multiple change-planes is equal or greater than two. If ng = 1, the single change-plane model is used, which is same as function 'estglmBoot'!")
-		fit = estglmBoot <- function(data, family = family, h = h, smooth = smooth, maxIter = maxIter, tol = tol)
+		fit = estglmBoot(data, family = family, h = h, smooth = smooth, maxIter = maxIter, tol = tol)
 		return(fit)
 	}
 	if(!(weights %in% c('exponential', 'norm','bernoulli'))){
