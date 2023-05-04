@@ -424,16 +424,6 @@ double SST_Quantile_bstr(double *y, double *tx1, double *x, double *z, double *a
 				psin[s] = tmp;
 			}
 
-			// for (s = 0; s < p2; s++){
-			// 	for (t = 0; t < p2; t++){
-			// 		tmp = 0.0;
-			// 		for(i=0; i<n; i++){
-			// 			tmp += psi_h[s*n+i]*psi_h[t*n+i];
-			// 		}
-			// 		Vh[s*p2+t] = tmp/n;
-			// 	}
-			// }
-
 			for (s = 0; s < p2; s++){
 				for (t = s; t < p2; t++){
 					tmp = 0.0;
@@ -472,7 +462,6 @@ double SST_Quantile_bstr(double *y, double *tx1, double *x, double *z, double *a
 					tmp = 0.0;
 					for(i=0; i<n; i++){
 						tmp += psi_h[s*n+i]*G[j*n+i];
-						// tmp += psi_h[s*n+i]*G[(j*p2+s)*n+i];
 					}
 					psin[s] = tmp;
 				}

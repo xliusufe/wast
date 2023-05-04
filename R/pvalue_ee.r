@@ -227,9 +227,8 @@ EstTn_quantile1 <- function(data, tau = 0.5, K = 20000L, M=1000L) {
 		rtheta = gam.init(K, p3-1, z[,-1], lb.quantile=.1, ub.quantile=0.9, ss=1)
 		rtheta = t(rtheta)
 	}
-	eb 		= matrix(sample(c(-2*tau, 2*(1-tau)), size=n*M, prob=c(tau,1-tau), replace=T), nrow = n, ncol = M)
-	wb  	= matrix(rnorm(M*n), nrow = n, ncol = M)
-	G 		= wb
+	# G 		= matrix(sample(c(-2*tau, 2*(1-tau)), size=n*M, prob=c(tau,1-tau), replace=T), nrow = n, ncol = M)
+	G  		= matrix(rnorm(M*n), nrow = n, ncol = M)
 	dims 	= c(n, p1, p2, p3, K, M, maxIter, type)
 	params 	= c(tau, h, tol)
 	fit 	<- .Call("_STT_Quantile_bstr",

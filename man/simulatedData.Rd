@@ -40,7 +40,7 @@ We simulated data generated from generalized linear models
 }
 
 \references{
-Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
+Liu, X. (2023). Subgroup testing in change-plane regression with high-dimensional grouping variables. Manuscript.
 }
 \examples{
 data(simulatedData_gaussian)

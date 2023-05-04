@@ -1,5 +1,5 @@
 # wast
-R package "wast" for calculating p-value of the test statistic for subgroup detecting in the framework of general estimating equation (EE). In the paper Liu (2022), we propose a novel test statistic by taking the weighted average of the squared score test statistic (WAST) over the nuisance parametric space. The proposed test statistics not only improve power, but also save dramatically computational time. Many common and useful models are considered, including models with change point or change plane. We propose a novel U-like test statistic to detect multiple change planes in the framework of EE.
+R package "wast" for calculating p-value of the test statistic for subgroup detecting in the framework of general estimating equation (EE). In the paper Liu (2023), we propose a novel test statistic by taking the weighted average of the squared score test statistic (WAST) over the nuisance parametric space. The proposed test statistics not only improve power, but also save dramatically computational time. Many common and useful models are considered, including models with change point or change plane. We propose a novel U-like test statistic to detect multiple change planes in the framework of EE.
 
 # Installation
 
@@ -39,21 +39,6 @@ R package "wast" for calculating p-value of the test statistic for subgroup dete
     pvals
 
 
-    ## Estimation
- 
-    data(simulatedData_gaussian)
-    fit <- estglm(data = data_gaussian, family = "gaussian")
-    fit$alpha
-
-    data(simulatedData_binomial)
-    fit <- estglm(data = data_binomial, family = "binomial")
-    fit$beta
-
-    data(simulatedData_poisson)
-    fit <- estglm(data = data_poisson, family = "poisson")
-    fit$alpha
-    fit$beta
-
 # References
 Andrews, D. W. K. and Ploberger, W. (1994). Optimal tests when a nuisance parameter is
 present only under the alternative. Econometrica, 62(6):1383-1414.
@@ -70,7 +55,7 @@ size calculation. Journal of the American Statistical Association, 112(518):769-
 Huang, Y., Cho, J., and Fong, Y. (2021). Threshold-based subgroup testing in logistic regression
 models in two phase sampling designs. Journal of the Royal Statistical Society: Series C. 70(2):291-311.
 
-Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
+Liu, X. (2022). Subgroup testing in change-plane regression with high-dimensional grouping variables. Manuscript.
 
 # Development
 This R package is developed by Xu Liu (liu.xu@sufe.edu.cn).

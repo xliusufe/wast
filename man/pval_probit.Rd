@@ -71,7 +71,7 @@ models in two phase sampling designs. Journal of the Royal Statistical Society: 
 LEE, S., SEO, M. H. and SHIN, Y. (2011). Testing for Threshold Effects in Regression Models. Journal of
 the American Statistical Association 106, 220-231.
 
-Liu, X. (2022). Change-plane testing in the generalized estimating equations. Manuscript.
+Liu, X. (2023). Subgroup testing in change-plane regression with high-dimensional grouping variables. Manuscript.
 }
 
 \examples{
